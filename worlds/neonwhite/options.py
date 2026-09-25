@@ -12,6 +12,7 @@ from Options import (
     Range,
     StartInventoryPool,
     Toggle,
+    OptionList
 )
 
 from .locations import neon_white_levels_medals
@@ -74,11 +75,13 @@ class MissionUnlockMethod(Choice):
     Ranks: Fills the pool with Neon Ranks, each mission requiring a number of ranks to unlock. See Rank Requirement.
     Missions: 1 Mission Unlock item is added to the pool per mission, each obtained unlocking the next locked mission.
     Levels: Each level is an item that must be collected
+    Progressive Levels: Each level can be collected multiple times, unlocking new cards in that level
     """
     display_name = "Mission Unlock Method"
     option_ranks = 1
     option_missions = 2
     option_levels = 3
+    option_progressive_levels = 4
     default = 1
 
 class StartingLevelCount(Range):
@@ -90,6 +93,37 @@ class StartingLevelCount(Range):
     range_start = 1
     default = 5
     range_end = 10
+
+class ProgressiveLevelsTiers(OptionList):
+    """
+    What cards are unlocked at each step when progressive levels are enabled.
+    When an item is listed here, it will not be added to the main pool.
+    """
+    display_name = "Progressive Levels"
+    default = [
+        ["Godspeed - Fire", "Stomp - Discard"],
+        ["Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Dominion - Fire"],
+        ["Purify - Discard", "Fireball - Discard", "Dominion - Discard"]
+    ]
+
+class ProgressiveLevelsShuffle(DefaultOnToggle):
+    """
+    With this enabled, items are shuffled and stored per level.
+    The amount of unlocks per level is the same.
+    """
+    display_name = "Shuffle Progressive Level Card Unlocks"
+
+class ProgressiveLevelsTrimming(Choice):
+    """
+    How to handle levels that don't have enough cards for all progressive unlocks to make sense.
+    Trim: If an unlock (after level 1) would grant no item in the level, it is removed from the pool.
+    Flatten: Unlocks in later tiers are pushed down to earlier ones when there is room.
+    Fixed: All levels have the specified number of unlocks, even if they have no effect.
+    """
+    display_name = "Progressive Level Trimming"
+    option_trim = 1
+    option_flatten = 2
+    option_fixed = 3
 
 class MedalSelect(OptionSet):
     """
@@ -217,3 +251,6 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
+    progressive_level_tiers: ProgressiveLevelsTiers
+    progressive_level_shuffle: ProgressiveLevelShuffle
+    progressive_level_trim: ProgressiveLevelTrim
