@@ -272,7 +272,6 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
     central_heaven = world.get_region("Central Heaven")
     # Connect central heaven to every mission
     level_total = 0
-    print(mission_count, neon_white_missions + neon_white_missions_sq)
     for i in range(mission_count):
         mission_region = world.get_region(mission_list[i])
         entrance_name = f"Central Heaven to {mission_region.name}"
