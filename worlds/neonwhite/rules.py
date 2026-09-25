@@ -129,7 +129,7 @@ class LevelRequirementSet:
                 return True
         return False
 
-    def make_rule(self, level: str, medal: Medal) -> "Rule":
+    def make_rule(self, level: str, medal: Medal, tiered_access: [[str]] = None) -> "Rule":
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         rule = False_()
 
@@ -137,7 +137,14 @@ class LevelRequirementSet:
             if (solution == LevelRequirements.FistOnly):
                 return True_()
 
-            rule |= HasAll(*solution.to_list())
+            # we could cut out duplicate abilities for performance,
+            # but then we could not later have abilities come from different sources
+            abilities = solution.to_list()
+            rule |= HasAll(*abilities)
+            if tiered_access is not None:
+                for i, abilities_in_tier in enumerate(tiered_access, start=1):
+                    remaining_abilities = [ability for ability in abilities if not in abilities_in_tier]
+                    rule |= (Has(level, i) & HasAll(*remaining_abilities))
         return rule
 
 
@@ -292,6 +299,12 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
             if i >= offset:
                 level_count += 1
 
+        tiered_access = (
+            world.options.progressive_level_tiers.value
+            if world.options.mission_unlock_method == MissionUnlockMethod.option_progressive_levels
+            else None
+        )
+
         for _ in range(level_count):
             level_name = world.ordered_levels[level_total]
             level_total += 1
@@ -302,11 +315,11 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
             if level_name in neon_white_levels_normal or level_name in neon_white_levels_giftless:
                 for medal in medals:
                     world.set_rule(world.get_location(f"{level_name} {medal.name} Completion"),
-                        world.requirement.make_rule(level_name, Medal(medal)))
+                        world.requirement.make_rule(level_name, Medal(medal), tiered_access))
 
                 if level_name not in neon_white_levels_giftless and world.options.gifts:
                     world.set_rule(world.get_location(level_name + " Gift"),
-                        world.requirement.make_rule(level_name, Medal.Gift))
+                        world.requirement.make_rule(level_name, Medal.Gift), tiered_access)
 
             else:
                 world.set_rule(world.get_location(level_name + " Completion"),
