@@ -142,8 +142,10 @@ class LevelRequirementSet:
             abilities = solution.to_list()
             rule |= HasAll(*abilities)
             if tiered_access is not None:
+                abilities_running_total = []
                 for i, abilities_in_tier in enumerate(tiered_access, start=1):
-                    remaining_abilities = [ability for ability in abilities if not in abilities_in_tier]
+                    abilities_running_total += abilities_in_tier
+                    remaining_abilities = [ability for ability in abilities if ability not in abilities_running_total]
                     rule |= (Has(level, i) & HasAll(*remaining_abilities))
         return rule
 
@@ -301,7 +303,7 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
 
         tiered_access = (
             world.options.progressive_level_tiers.value
-            if world.options.mission_unlock_method == MissionUnlockMethod.option_progressive_levels
+            if world.options.unlock_method == MissionUnlockMethod.option_progressive_levels
             else None
         )
 
@@ -319,7 +321,7 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
 
                 if level_name not in neon_white_levels_giftless and world.options.gifts:
                     world.set_rule(world.get_location(level_name + " Gift"),
-                        world.requirement.make_rule(level_name, Medal.Gift), tiered_access)
+                        world.requirement.make_rule(level_name, Medal.Gift, tiered_access))
 
             else:
                 world.set_rule(world.get_location(level_name + " Completion"),
