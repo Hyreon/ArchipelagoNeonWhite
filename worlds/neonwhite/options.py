@@ -94,7 +94,7 @@ class StartingLevelCount(Range):
     default = 5
     range_end = 10
 
-class ProgressiveLevelsTiers(OptionList):
+class ProgressiveLevelTiers(OptionList):
     """
     What cards are unlocked at each step when progressive levels are enabled.
     When an item is listed here, it will not be added to the main pool.
@@ -106,14 +106,14 @@ class ProgressiveLevelsTiers(OptionList):
         ["Purify - Discard", "Fireball - Discard", "Dominion - Discard"]
     ]
 
-class ProgressiveLevelsShuffle(DefaultOnToggle):
+class ProgressiveLevelShuffle(DefaultOnToggle):
     """
     With this enabled, items are shuffled and stored per level.
     The amount of unlocks per level is the same.
     """
     display_name = "Shuffle Progressive Level Card Unlocks"
 
-class ProgressiveLevelsTrimming(Choice):
+class ProgressiveLevelTrim(Choice):
     """
     How to handle levels that don't have enough cards for all progressive unlocks to make sense.
     Trim: If an unlock (after level 1) would grant no item in the level, it is removed from the pool.
@@ -124,6 +124,7 @@ class ProgressiveLevelsTrimming(Choice):
     option_trim = 1
     option_flatten = 2
     option_fixed = 3
+    default = option_trim
 
 class MedalSelect(OptionSet):
     """
@@ -251,6 +252,6 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
-    progressive_level_tiers: ProgressiveLevelsTiers
+    progressive_level_tiers: ProgressiveLevelTiers
     progressive_level_shuffle: ProgressiveLevelShuffle
     progressive_level_trim: ProgressiveLevelTrim

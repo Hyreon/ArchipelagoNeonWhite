@@ -236,7 +236,7 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
     if not world.ordered_levels:
         world.ordered_levels = level_rando(world)
 
-    if options.unlock_method == MissionUnlockMethod.option_levels:
+    if world.use_levels:
         # Basegame missions
         mission_list = [x[0] for x in neon_white_missions]
         if options.sidequests:
@@ -272,6 +272,7 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
     central_heaven = world.get_region("Central Heaven")
     # Connect central heaven to every mission
     level_total = 0
+    print(mission_count, neon_white_missions + neon_white_missions_sq)
     for i in range(mission_count):
         mission_region = world.get_region(mission_list[i])
         entrance_name = f"Central Heaven to {mission_region.name}"
@@ -298,7 +299,7 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
 
             _ = mission_region.connect(world.get_region("Level: " + level_name),
                 f"{mission_region.name} to {level_name}",
-                Has(level_name) if world.options.unlock_method == MissionUnlockMethod.option_levels else None)
+                Has(level_name) if world.use_levels else None)
             if level_name in neon_white_levels_normal or level_name in neon_white_levels_giftless:
                 for medal in medals:
                     world.set_rule(world.get_location(f"{level_name} {medal.name} Completion"),

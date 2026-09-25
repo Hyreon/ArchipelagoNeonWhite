@@ -32,7 +32,8 @@ neon_white_missions_sq = [
 ]
 
 def create_regions(player: int, multiworld: MultiWorld, options: NeonWhiteOptions):
-    if options.unlock_method == MissionUnlockMethod.option_levels:
+    if (options.unlock_method == MissionUnlockMethod.option_levels
+        or options.unlock_method == MissionUnlockMethod.option_progressive_levels):
         # Basegame missions
         mission_list = [x[0] for x in neon_white_missions]
         if options.sidequests:
