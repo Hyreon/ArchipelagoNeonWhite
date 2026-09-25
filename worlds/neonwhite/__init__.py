@@ -113,6 +113,7 @@ class NeonWhiteWorld(World):
             self.options.total_ranks.value = ut_regen.get("total_ranks", 0)
 
         self.use_levels = self.options.unlock_method == MissionUnlockMethod.option_levels
+                       or self.options.unlock_method == MissionUnlockMethod.option_progressive_levels
 
         req_select = int(self.options.difficulty_knowledge)
         req_select += int(self.options.difficulty_execution) * 10
@@ -172,8 +173,11 @@ class NeonWhiteWorld(World):
 
         loc_count = len(self.get_locations())  # pyright: ignore[reportArgumentType]
 
+        # Exclude cards that are assigned to progressive levels
+        excluded_cards = [card for tier in self.options.progressive_level_tiers for card in tier]
+
         # Add soul cards
-        itempool += [self.create_item(card) for card in get_items_from_category("Card")]
+        itempool += [self.create_item(card) for card in get_items_from_category("Card") if not in excluded_cards]
 
         match self.options.unlock_method:
             case MissionUnlockMethod.option_missions:
@@ -187,12 +191,16 @@ class NeonWhiteWorld(World):
                     self.ranks_required = int(total_ranks_clamp * (self.options.ranks_required_percent / 100))
 
                 itempool.extend(self.create_item("Neon Rank") for _ in range(total_ranks_clamp))
-            case MissionUnlockMethod.option_levels:
+            case MissionUnlockMethod.option_levels | MissionUnlockMethod.option_progressive_levels:
                 levels = neon_white_levels_normal + neon_white_levels_giftless
                 if self.options.sidequests:
                     levels.extend(neon_white_levels_sidequests)
 
-                itempool.extend(self.create_item(x) for x in levels)
+                level_copies = 1 if self.options.unlock_method == MissionUnlockMethod.option_levels
+                                 else len(self.options.progressive_level_tiers)
+                itempool.extend(self.create_item(x) for x in levels for _ in range(level_copies))
+
+
 
         prec = self.multiworld.precollected_items[self.player].copy()
 
