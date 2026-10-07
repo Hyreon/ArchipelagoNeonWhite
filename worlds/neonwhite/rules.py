@@ -142,10 +142,8 @@ class LevelRequirementSet:
             abilities = solution.to_list()
             rule |= HasAll(*abilities)
             if tiered_access is not None:
-                abilities_running_total = []
                 for i, abilities_in_tier in enumerate(tiered_access, start=1):
-                    abilities_running_total += abilities_in_tier
-                    remaining_abilities = [ability for ability in abilities if ability not in abilities_running_total]
+                    remaining_abilities = [ability for ability in abilities if ability not in abilities_in_tier]
                     rule |= (Has(level, i) & HasAll(*remaining_abilities))
         return rule
 
@@ -154,6 +152,20 @@ class LevelRequirementSet:
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         return self.requirements[level][medal_idx]
 
+
+def vanilla_items() -> [str]:
+    from importlib.resources import files
+    file = files(data).joinpath("nw_cr.json").open()
+    json_data = json.loads(file.read())
+    items_in_levels = []
+    for entry in json_data:
+        print(entry)
+        for solution in json_data[entry]:
+            if solution["k"] == KnowledgeDifficulty.option_vanilla and solution["e"] == ExecutionDifficulty.option_vanilla:
+                solution_as_string_list = LevelRequirements(solution["r"]).to_list()
+                items_in_levels.append(solution_as_string_list)
+                continue
+    return items_in_levels
 
 def import_json_to_data(know_diff: KnowledgeDifficulty, exec_diff: ExecutionDifficulty) -> LevelRequirementSet:
 
@@ -239,6 +251,12 @@ def get_mission_rank_required(world: "NeonWhiteWorld", mission: int) -> int:
     normal_value = (pow(lenience_value, mission_fraction) - 1) / (lenience_value - 1)
     return floor(world.ranks_required * normal_value)
 
+def build_tiered_access_from(abilities: [str], sizes: [int]):
+    output = []
+    for size in sizes:
+        output.append(abilities[:size])
+    return output
+
 def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhiteOptions):
     medals = [Medal(x) for x in options.medal_select]
 
@@ -301,13 +319,13 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
             if i >= offset:
                 level_count += 1
 
-        tiered_access = (
-            world.options.progressive_level_tiers.value
-            if world.options.unlock_method == MissionUnlockMethod.option_progressive_levels
-            else None
-        )
-
         for _ in range(level_count):
+            
+            tiered_access = (build_tiered_access_from(world.access_order[level_total], world.options.progressive_access_tiers.value)
+                if world.options.unlock_method == MissionUnlockMethod.option_progressive_levels
+                else None
+            )
+            
             level_name = world.ordered_levels[level_total]
             level_total += 1
 

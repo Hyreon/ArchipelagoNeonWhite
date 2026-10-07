@@ -29,6 +29,7 @@ from .options import (
     KnowledgeDifficulty,
     MissionUnlockMethod,
     NeonWhiteOptions,
+    ProgressiveAccessTrim
 )
 from .regions import create_regions
 from .rules import (
@@ -38,6 +39,7 @@ from .rules import (
     get_mission_rank_required,
     import_json_to_data,
     set_rules,
+    vanilla_items
 )
 
 
@@ -154,6 +156,13 @@ class NeonWhiteWorld(World):
             for x in self.early_levels:
                 self.multiworld.push_precollected(self.create_item(x))
 
+        if self.options.unlock_method == MissionUnlockMethod.option_progressive_levels:
+            self.access_order = self.generate_access_order()
+
+            self.vanilla_items = vanilla_items()
+            for i in range(0,len(self.access_order)):
+                self.copies_for(i)  # makes adjustments
+
         if (self.options.difficulty_knowledge <= KnowledgeDifficulty.option_vanilla
             or self.options.difficulty_execution <= ExecutionDifficulty.option_casual):
                 self.multiworld.push_precollected(self.create_item("Katana"))
@@ -176,7 +185,7 @@ class NeonWhiteWorld(World):
         loc_count = len(self.get_locations())  # pyright: ignore[reportArgumentType]
 
         # Exclude cards that are assigned to progressive levels
-        excluded_cards = [card for tier in self.options.progressive_level_tiers.value for card in tier]
+        excluded_cards = [ability for ability in self.options.progressive_access_abilities.value]
 
         # Add soul cards
         itempool += [self.create_item(card) for card in get_items_from_category("Card") if card not in excluded_cards]
@@ -197,14 +206,11 @@ class NeonWhiteWorld(World):
                 levels = neon_white_levels_normal + neon_white_levels_giftless
                 if self.options.sidequests:
                     levels.extend(neon_white_levels_sidequests)
+                
+                for i,level in enumerate(levels):
+                    itempool.extend([self.create_item(level) for _ in range(self.copies_for(i, safe=True))])
 
-                level_copies = (
-                    1 if self.options.unlock_method == MissionUnlockMethod.option_levels
-                      else len(self.options.progressive_level_tiers.value)
-                )
-                itempool.extend(self.create_item(x) for x in levels for _ in range(level_copies))
-
-
+        print(itempool)
 
         prec = self.multiworld.precollected_items[self.player].copy()
 
@@ -217,6 +223,52 @@ class NeonWhiteWorld(World):
         itempool += [self.create_item(x) for x in self.get_filler_rando(k=loc_count - len(itempool))]
 
         self.multiworld.itempool += itempool
+
+    def copies_for(self, level_index, safe = False):
+        max_level_copies = (
+            1 if self.options.unlock_method == MissionUnlockMethod.option_levels
+              else len(self.options.progressive_access_tiers.value)
+        )
+        match self.options.progressive_access_trim:
+            case ProgressiveAccessTrim.option_constant:
+                return max_level_copies
+            case ProgressiveAccessTrim.option_flatten:
+                return max_level_copies # TODO stub
+            case ProgressiveAccessTrim.option_trim:
+                # this is a mess, isn't it?
+                # it's literally not possible to do this if any removable tier can contain more items than a lower, removable tier
+                # we'll need to fix that later by making the # of cards unlocked per progressive access item vary per group. later.
+                relevant_cards = set(self.vanilla_items[level_index]).intersection(self.options.progressive_access_abilities.value)
+                group_access_order = self.access_order[level_index].copy()
+                relevant_sections = []
+                irrelevant_sections = []
+                for start,end,section in self.access_into_sections(group_access_order): # looks at sections > 0
+                    if start == 0 or any(card in relevant_cards for card in section): #start = 0 is no cards, sometimes level access alone is enough to matter
+                        relevant_sections.append(section) # end - start is the length
+                    else:
+                        irrelevant_sections.append(section)
+
+                if not safe:
+                    self.access_order[level_index].clear()
+                    for section in relevant_sections:
+                        self.access_order[level_index].extend(section)
+                    for section in irrelevant_sections:
+                        self.access_order[level_index].extend(section)
+
+                    print(level_index, ":", len(relevant_sections), "(", self.access_order[level_index], ") : ", relevant_cards)
+
+                return len(relevant_sections)
+
+    def access_into_sections(self, group_access_order):
+        sizes = self.options.progressive_access_tiers.value
+        sections = []
+        for i in range(0, len(sizes)):
+            start = 0
+            if i > 0:
+                start = sizes[i - 1]
+            end = sizes[i]
+            sections.append((start, end, group_access_order[start:end].copy()))
+        return sections
 
     def get_filler_item_name(self) -> str:
         return self.get_filler_rando()[0]
@@ -254,7 +306,7 @@ class NeonWhiteWorld(World):
 
         extra: dict[str, Any] = {}  # pyright: ignore[reportExplicitAny]
 
-        if self.options.unlock_method != MissionUnlockMethod.option_levels:
+        if self.use_levels:
             dumps = json.dumps([neon_white_level_name_internal[x] for x in self.ordered_levels], separators=(",", ":"))
 
             cpobj = zlib.compressobj(level=9, wbits=-15, memLevel=9)
@@ -269,7 +321,10 @@ class NeonWhiteWorld(World):
                     get_mission_rank_required(self, i + 1)
                         for i in range(self.options.mission_count)
                 ]
-
+        
+        if self.options.unlock_method == MissionUnlockMethod.option_progressive_levels:
+            extra["access_order"] = self.access_order
+        
         options_to_show = [
             "difficulty_knowledge", "difficulty_execution", "boof_shenanigans",
             "medal_select", "gifts", "sidequests", "unlock_method", "goal",
@@ -285,6 +340,16 @@ class NeonWhiteWorld(World):
             "early_levels": self.early_levels,
             "options": self.options.as_dict(*options_to_show)
         } | extra
+    
+    def generate_access_order(self) -> dict[str, Any]:
+        access_order = []
+        num_groups = 121  # hard-coded BS for now
+        for _ in range(0,num_groups):
+            order = self.options.progressive_access_abilities.value.copy()
+            self.random.shuffle(order)
+            access_order.append(order)
+
+        return access_order
 
     @staticmethod
     def interpret_slot_data(slot_data: dict[str, Any]) -> dict[str, Any]:

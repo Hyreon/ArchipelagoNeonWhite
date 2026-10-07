@@ -94,37 +94,35 @@ class StartingLevelCount(Range):
     default = 5
     range_end = 10
 
-class ProgressiveLevelTiers(OptionList):
+class ProgressiveAccessAbilities(OptionList):
     """
-    What cards are unlocked at each step when progressive levels are enabled.
+    What cards are unlocked by progressive access.
     When an item is listed here, it will not be added to the main pool.
     """
-    display_name = "Progressive Levels"
-    default = [
-        ["Godspeed - Fire", "Stomp - Discard"],
-        ["Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Dominion - Fire"],
-        ["Purify - Discard", "Fireball - Discard", "Dominion - Discard"]
-    ]
+    display_name = "Progressive Access Affected Abilities"
+    default = ["Godspeed - Fire", "Stomp - Discard", "Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Purify - Discard", "Dominion - Fire", "Fireball - Discard", "Dominion - Discard"]
 
-class ProgressiveLevelShuffle(DefaultOnToggle):
+class ProgressiveAccessTiers(OptionList):
     """
-    With this enabled, items are shuffled and stored per level.
-    The amount of unlocks per level is the same.
+    How many abilities are unlocked by each tier, and how many tiers there are.
+    Most levels don't have all cards,
+    so the access may not provide as much (or any!) benefit.
     """
-    display_name = "Shuffle Progressive Level Card Unlocks"
+    display_name = "Progressive Access Tiers"
+    default = [2, 8, 12]
 
-class ProgressiveLevelTrim(Choice):
+class ProgressiveAccessTrim(Choice):
     """
-    How to handle levels that don't have enough cards for all progressive unlocks to make sense.
+    How to handle groups that don't have enough cards for all progressive unlocks to make sense.
     Trim: If an unlock (after level 1) would grant no item in the level, it is removed from the pool.
     Flatten: Unlocks in later tiers are pushed down to earlier ones when there is room.
-    Fixed: All levels have the specified number of unlocks, even if they have no effect.
+    Constant: All levels have the specified number of unlocks, with no guarantees about usefulness or order.
     """
-    display_name = "Progressive Level Trimming"
+    display_name = "Progressive Access Trimming"
     option_trim = 1
     option_flatten = 2
-    option_fixed = 3
-    default = option_trim
+    option_constant = 3
+    default = option_constant
 
 class MedalSelect(OptionSet):
     """
@@ -252,6 +250,6 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
-    progressive_level_tiers: ProgressiveLevelTiers
-    progressive_level_shuffle: ProgressiveLevelShuffle
-    progressive_level_trim: ProgressiveLevelTrim
+    progressive_access_abilities: ProgressiveAccessAbilities
+    progressive_access_tiers: ProgressiveAccessTiers
+    progressive_access_trim: ProgressiveAccessTrim
