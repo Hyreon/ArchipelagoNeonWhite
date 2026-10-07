@@ -31,13 +31,17 @@ neon_white_missions_sq = [
     ("Yellow Sidequests", 8),
 ]
 
+def names_of_missions(mission_list): # abstraction, in case we change the internal format of missions and their counts later
+    return (m[0] for m in mission_list)
+
 def create_regions(player: int, multiworld: MultiWorld, options: NeonWhiteOptions):
     if (options.unlock_method == MissionUnlockMethod.option_levels
         or options.unlock_method == MissionUnlockMethod.option_progressive_levels):
         # Basegame missions
-        mission_list = [x[0] for x in neon_white_missions]
+        mission_list = names_of_missions(neon_white_missions)
+        print(mission_list)
         if options.sidequests:
-            mission_list.extend(x[0] for x in neon_white_missions_sq)
+            mission_list.extend(names_of_missions(neon_white_missions_sq))
     else:
         # 121 levels split amongst X missions, differing from the base game
         mission_list = [f"Mission {x + 1}" for x in range(options.mission_count)]

@@ -4,7 +4,7 @@ from typing import NamedTuple
 from BaseClasses import Item, ItemClassification
 
 from .locations import neon_white_level_name_internal
-
+from .regions import neon_white_missions, neon_white_missions_sq, names_of_missions
 
 class NWItem(Item):
     game: str = "Neon White"
@@ -12,6 +12,9 @@ class NWItem(Item):
     card_id = 500
     level_id = 600
     misc_id = 800
+    access_progressive_id = 20000  # 121 levels + 18 vanilla missions + the 60 custom missions = 199
+    access_id             = 20200  # up to 10 copies by number (5 medals + gift + 4 extra for future proofing); 0 is for blank, when there's only one pack per zone
+    access_item_id        = 22400  # each of the 14 items per zone (levels without the item are included for simplicity, and for future proofing) # this is intended if a pack has 1 item, not used for now
 
     card_classification = ItemClassification.progression | ItemClassification.useful
     usefiller_classification = ItemClassification.useful | ItemClassification.deprioritized | ItemClassification.skip_balancing
@@ -26,22 +29,35 @@ def get_items_from_category(category: str) -> Iterable[str]:
         if item.category == category:
             yield name
 
-nw_items: dict[str, NWItemData] = {
-    "Katana":               NWItemData("Card", NWItem.card_id +  1, NWItem.card_classification),
-    "Book of Life":         NWItemData("Card", NWItem.card_id +  2, NWItem.card_classification),
-    "Purify - Fire":        NWItemData("Card", NWItem.card_id +  3, NWItem.card_classification),
-    "Purify - Discard":     NWItemData("Card", NWItem.card_id +  4, NWItem.card_classification),
-    "Elevate - Fire":       NWItemData("Card", NWItem.card_id +  5, NWItem.card_classification),
-    "Elevate - Discard":    NWItemData("Card", NWItem.card_id +  6, NWItem.card_classification),
-    "Godspeed - Fire":      NWItemData("Card", NWItem.card_id +  7, NWItem.card_classification),
-    "Godspeed - Discard":   NWItemData("Card", NWItem.card_id +  8, NWItem.card_classification),
-    "Stomp - Fire":         NWItemData("Card", NWItem.card_id +  9, NWItem.card_classification),
-    "Stomp - Discard":      NWItemData("Card", NWItem.card_id + 10, NWItem.card_classification),
-    "Fireball - Fire":      NWItemData("Card", NWItem.card_id + 11, NWItem.card_classification),
-    "Fireball - Discard":   NWItemData("Card", NWItem.card_id + 12, NWItem.card_classification),
-    "Dominion - Fire":      NWItemData("Card", NWItem.card_id + 13, NWItem.card_classification),
-    "Dominion - Discard":   NWItemData("Card", NWItem.card_id + 14, NWItem.card_classification),
+def possible_zones():
+    zones = []
+    zones.extend(neon_white_level_name_internal.keys())
+    zones.extend(names_of_missions(neon_white_missions))
+    zones.extend(names_of_missions(neon_white_missions_sq))
+    zones.extend([f"Mission {n}" for n in range(1, 61)])
+    return zones
 
+abilities = [
+    "Katana",
+    "Book of Life",
+    "Purify - Fire",
+    "Purify - Discard",
+    "Elevate - Fire",
+    "Elevate - Discard",
+    "Godspeed - Fire",
+    "Godspeed - Discard",
+    "Stomp - Fire",
+    "Stomp - Discard",
+    "Fireball - Fire",
+    "Fireball - Discard",
+    "Dominion - Fire",
+    "Dominion - Discard"
+]
+
+nw_items: dict[str, NWItemData] = {
+    item: NWItemData("Card", NWItem.card_id + i + 1, NWItem.card_classification)
+        for i, item in enumerate(abilities)
+} | {
     "Neon Rank":            NWItemData("Progression", NWItem.prog_id + 0,
         ItemClassification.progression_deprioritized_skip_balancing),
     "Mission Unlock":       NWItemData("Progression", NWItem.prog_id + 1,
@@ -63,13 +79,30 @@ nw_items: dict[str, NWItemData] = {
 } | {
     f"{level}": NWItemData("Level", NWItem.level_id + i, ItemClassification.progression)
         for i, level in enumerate(neon_white_level_name_internal.keys())
+} | {
+    f"{zone} Progressive Access": NWItemData("Progressive Access", NWItem.access_progressive_id + i, ItemClassification.progression)
+        for i, zone in enumerate(possible_zones())
+} | {
+    f"{zone} Access Pack": NWItemData("Access Pack", NWItem.access_id + i, ItemClassification.progression)
+        for i, zone in enumerate(possible_zones())
+} | {
+    f"{zone} Access Pack {n}": NWItemData("Access Pack", NWItem.access_id + i + 200*n, ItemClassification.progression)
+        for i, zone in enumerate(possible_zones())
+        for n in range(1, 10)
+} | {
+    f"{ability} - {zone}": NWItemData("Local Item", NWItem.access_item_id + i, ItemClassification.progression)
+        for i, zone in enumerate(possible_zones())
+        ability for ability in abilities
 }
 
 item_categories = [
     "Progression",
     "Card",
     "Filler",
-    "Level"
+    "Level",
+    "Local Item",
+    "Access Pack",
+    "Progressive Access"
 ]
 
 nw_item_groups = { cat: set(get_items_from_category(cat)) for cat in item_categories }
