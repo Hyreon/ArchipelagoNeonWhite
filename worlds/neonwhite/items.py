@@ -12,9 +12,9 @@ class NWItem(Item):
     card_id = 500
     level_id = 600
     misc_id = 800
-    access_progressive_id = 20000  # 121 levels + 18 vanilla missions + the 60 custom missions = 199
-    access_id             = 20200  # up to 10 copies by number (5 medals + gift + 4 extra for future proofing); 0 is for blank, when there's only one pack per zone
-    access_item_id        = 22400  # each of the 14 items per zone (levels without the item are included for simplicity, and for future proofing) # this is intended if a pack has 1 item, not used for now
+    ability_progressive_id = 20000  # 121 levels + 18 vanilla missions + the 60 custom missions = 199
+    ability_group_id       = 20200  # up to 10 copies by number (5 medals + gift + 4 extra for future proofing); 0 is for blank, when there's only one pack per zone
+    ability_local_id       = 22400  # each of the 14 items per zone (levels without the item are included for simplicity, and for future proofing) # this is intended if a pack has 1 item, not used for now
 
     card_classification = ItemClassification.progression | ItemClassification.useful
     usefiller_classification = ItemClassification.useful | ItemClassification.deprioritized | ItemClassification.skip_balancing
@@ -80,17 +80,17 @@ nw_items: dict[str, NWItemData] = {
     f"{level}": NWItemData("Level", NWItem.level_id + i, ItemClassification.progression)
         for i, level in enumerate(neon_white_level_name_internal.keys())
 } | {
-    f"{zone} Progressive Access": NWItemData("Progressive Access", NWItem.access_progressive_id + i, ItemClassification.progression)
+    f"{zone} Progressive Abilities": NWItemData("Progressive Abilities", NWItem.ability_progressive_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    f"{zone} Access Pack": NWItemData("Access Pack", NWItem.access_id + i, ItemClassification.progression)
+    f"{zone} Ability Pack": NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    f"{zone} Access Pack {n}": NWItemData("Access Pack", NWItem.access_id + i + 200*n, ItemClassification.progression)
+    f"{zone} Ability Pack {n}": NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         for n in range(1, 10)
 } | {
-    f"{ability} - {zone}": NWItemData("Local Item", NWItem.access_item_id + i, ItemClassification.progression)
+    f"{ability} - {zone}": NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         ability for ability in abilities
 }
@@ -100,9 +100,9 @@ item_categories = [
     "Card",
     "Filler",
     "Level",
-    "Local Item",
-    "Access Pack",
-    "Progressive Access"
+    "Local Ability",
+    "Ability Pack",
+    "Progressive Abilities"
 ]
 
 nw_item_groups = { cat: set(get_items_from_category(cat)) for cat in item_categories }

@@ -75,13 +75,13 @@ class MissionUnlockMethod(Choice):
     Ranks: Fills the pool with Neon Ranks, each mission requiring a number of ranks to unlock. See Rank Requirement.
     Missions: 1 Mission Unlock item is added to the pool per mission, each obtained unlocking the next locked mission.
     Levels: Each level is an item that must be collected
-    Access Packs: No unlock items specifically are added to the pool. You may play any level that you have an access pack in. (You MUST have access packs enabled)
+    Ability Packs: No unlock items specifically are added to the pool. You may play any level that you have an ability pack in. (You MUST have ability packs enabled)
     """
     display_name = "Mission Unlock Method"
     option_ranks = 1
     option_missions = 2
     option_levels = 3
-    option_access_pack = 4
+    option_ability_pack = 4
     default = 1
 
 class StartingLevelCount(Range):
@@ -199,86 +199,86 @@ class DeathLinkResets(Range):
     range_end = 50
     default = 20
 
-class AccessPackDomain(OptionList):
+class AbilityPackDomain(OptionList):
     """
     By default, items are obtained once per world.
     However, you can split items of your choice
     to be distributed in packs across levels or missions.
     """
-    display_name = "Access Packs"
+    display_name = "Ability Packs"
     option_disabled = 1
     option_per_vanilla_mission = 2
     option_per_custom_mission = 3
     option_per_level = 4
     default = option_per_level
 
-class AccessPackSizes(OptionList):
+class AbilityPackSizes(OptionList):
     """
-    The size of each access pack, and the amount of packs, rounded to the nearest percent.
+    The size of each ability pack, and the amount of packs, rounded to the nearest percent.
     This must add up to 100%.
     The default settings [16.7, 50.0, 33.3] add 3 packs per zone,
     where the first one grants 2/12 items, the second one grants 6/12,
     and the last one grants 4/12. it's a good curve for progressive.
     Some other examples:
-    [100.0] means one pack to grant every access pack ability
+    [100.0] means one pack to grant every ability pack ability
     [10.0, 20.0, 30.0, 40.0] means 4 packs, each bigger than the last
     """
-    display_name = "Access Packs - Sizes"
+    display_name = "Ability Packs - Sizes"
     default = [16.7, 50.0, 33.3]
 
-class AccessPackAbilities(OptionList):
+class AbilityPackAbilities(OptionList):
     """
-    What abilities are unlocked by access packs.
+    What abilities are unlocked by ability packs.
     When an item is listed here, it will not be added to the main pool.
     Careful when messing with this - if it doesn't match an ability name, the world won't generate.
     """
-    display_name = "Access Packs - Affected Abilities"
+    display_name = "Ability Packs - Affected Abilities"
     default = ["Godspeed - Fire", "Stomp - Discard", "Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Purify - Discard", "Dominion - Fire", "Fireball - Discard", "Dominion - Discard"]
 
-class AccessPackSmoothing(OptionList):
+class AbilityPackSmoothing(OptionList):
     """
     With purely random abilities, you aren't guaranteed anything useful. Pack smoothing fixes that.
     This overrides the pack size. You need a lot of abilities to do anything in some levels, even at expert or master level.
     This logic has little effect on missions but is still applied.
     No Smoothing: Your only assurance is that by your last pack, you have everything, including what you need.
-    Traversal: Your first access pack contains whatever you need to traverse some level in the zone at your skill level.
-    First Grants Check: Your first access pack guarantees a check at your skill level, supposing you have all global items.
-    All Grant Check: If you have access packs 1 to X, you will be able to clear at least X checks.
+    Traversal: Your first ability pack contains whatever you need to traverse some level in the zone at your skill level.
+    First Grants Check: Your first ability pack guarantees a check at your skill level, supposing you have all global items.
+    All Grant Check: If you have ability packs 1 to X, you will be able to clear at least X checks.
     === DOES NOT DO ANYTHING ATM ===
     """
-    display_name = "Access Packs - Smoothing"
+    display_name = "Ability Packs - Smoothing"
     option_no_smoothing = 1
     option_traversal = 2  # if every check wants an ability, you start with it
     option_first_grants_check = 3  # picks a route to either gift or get >= the lowest medal, that isn't a superset of a solve for something smaller but still >= lower medal, and grants everything for at least it
     option_all_grant_check = 4  # repeats this process for each pack, picking higher medals
     default = option_traversal
 
-class AccessPackTrim(Toggle):
+class AbilityPackTrim(Toggle):
     """
     When enabled, useless packs are removed.
-    A pack is useless if grants no new cards, and is not required to access the level.
+    A pack is useless if grants no new cards, and is not required to ability the level.
     With this setting enabled, you are not guaranteed the same amount of items
-    across all seeds. Additionally, some levels will have less access cards.
+    across all seeds. Additionally, some levels will have less ability cards.
     === DOES NOT DO ANYTHING ATM ===
     """
-    display_name = "Access Packs - Trimming"
+    display_name = "Ability Packs - Trimming"
 
-class AccessPackIsProgressive(DefaultOnToggle):
+class AbilityPackIsProgressive(DefaultOnToggle):
     """
-    If enabled, access packs unlock abilities in a fixed
+    If enabled, ability packs unlock abilities in a fixed
     order regardless of which ones you pick up.
-    If disabled, access packs can be obtained out of
+    If disabled, ability packs can be obtained out of
     order depending on which ones you pick up.
     """
-    display_name = "Access Packs - Progressive"
+    display_name = "Ability Packs - Progressive"
 
-class AccessPackVariation(DefaultOnToggle):
+class AbilityPackVariation(DefaultOnToggle):
     """
-    If enabled, the access pack sizes are treated as a suggestion rather than a rule.
+    If enabled, the ability pack sizes are treated as a suggestion rather than a rule.
     This has a stronger effect on levels with fewer cards.
     === DOES NOT DO ANYTHING ATM ===
     """
-    display_name = "Access Packs - Vary Pack Size"
+    display_name = "Ability Packs - Vary Pack Size"
 
 
 @dataclass
@@ -302,10 +302,10 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
-    access_pack: AccessPackDomain
-    access_pack_sizes: AccessPackSizes
-    access_pack_abilities: AccessPackAbilities
-    access_pack_smoothing: AccessPackSmoothing
-    access_pack_trimming: AccessPackTrim
-    access_pack_progressive: AccessPackIsProgressive
-    access_pack_variation: AccessPackVariation
+    ability_pack: AbilityPackDomain
+    ability_pack_sizes: AbilityPackSizes
+    ability_pack_abilities: AbilityPackAbilities
+    ability_pack_smoothing: AbilityPackSmoothing
+    ability_pack_trimming: AbilityPackTrim
+    ability_pack_progressive: AbilityPackIsProgressive
+    ability_pack_variation: AbilityPackVariation
