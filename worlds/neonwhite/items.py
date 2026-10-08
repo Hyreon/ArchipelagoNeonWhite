@@ -54,6 +54,18 @@ abilities = [
     "Dominion - Discard"
 ]
 
+def progressive_pack_name(zone: str):
+    return f"{zone} Progressive Abilities"
+
+def normal_pack_name(zone: str):
+    return f"{zone} Ability Pack"
+
+def numbered_pack_name(zone: str, number: int):
+    return f"{zone} Ability Pack {n}"
+
+def single_pack_name(zone: str, contents: str):
+    return f"{ability} - {zone}"
+
 nw_items: dict[str, NWItemData] = {
     item: NWItemData("Card", NWItem.card_id + i + 1, NWItem.card_classification)
         for i, item in enumerate(abilities)
@@ -80,17 +92,17 @@ nw_items: dict[str, NWItemData] = {
     f"{level}": NWItemData("Level", NWItem.level_id + i, ItemClassification.progression)
         for i, level in enumerate(neon_white_level_name_internal.keys())
 } | {
-    f"{zone} Progressive Abilities": NWItemData("Progressive Abilities", NWItem.ability_progressive_id + i, ItemClassification.progression)
+    progressive_pack_name(zone): NWItemData("Progressive Abilities", NWItem.ability_progressive_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    f"{zone} Ability Pack": NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
+    normal_pack_name(zone): NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    f"{zone} Ability Pack {n}": NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
+    numbered_pack_name(zone): NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         for n in range(1, 10)
 } | {
-    f"{ability} - {zone}": NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
+    single_pack_name(zone, ability): NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         ability for ability in abilities
 }

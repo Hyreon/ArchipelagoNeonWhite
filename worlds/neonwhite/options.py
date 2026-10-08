@@ -210,7 +210,7 @@ class AbilityPackDomain(OptionList):
     option_per_vanilla_mission = 2
     option_per_custom_mission = 3
     option_per_level = 4
-    default = option_per_level
+    default = option_disabled
 
 class AbilityPackSizes(OptionList):
     """
@@ -220,17 +220,27 @@ class AbilityPackSizes(OptionList):
     where the first one grants 2/12 items, the second one grants 6/12,
     and the last one grants 4/12. it's a good curve for progressive.
     Some other examples:
-    [100.0] means one pack to grant every ability pack ability
+    [100.0] means one pack to grant every pack ability
     [10.0, 20.0, 30.0, 40.0] means 4 packs, each bigger than the last
     """
     display_name = "Ability Packs - Sizes"
     default = [16.7, 50.0, 33.3]
 
+class LocalAbilities(OptionList):
+    """
+    What abilities are unlocked by themselves rather than as part of a pack.
+    When an item is listed here, it will not be added to the main pool.
+    Careful when messing with this - if it doesn't mach an ability name, the world won't generate.
+    Setting this to something like ["Book of Life"] will make each Book of Life level unlock its page separately.
+    """
+    display_name = "Local Abilities"
+    default = []
+
 class AbilityPackAbilities(OptionList):
     """
     What abilities are unlocked by ability packs.
     When an item is listed here, it will not be added to the main pool.
-    Careful when messing with this - if it doesn't match an ability name, the world won't generate.
+    Careful when messing with this - if it doesn't match an ability name, or duplicates something in the local abilities, the world won't generate.
     """
     display_name = "Ability Packs - Affected Abilities"
     default = ["Godspeed - Fire", "Stomp - Discard", "Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Purify - Discard", "Dominion - Fire", "Fireball - Discard", "Dominion - Discard"]
@@ -258,7 +268,7 @@ class AbilityPackTrim(Toggle):
     When enabled, useless packs are removed.
     A pack is useless if grants no new cards, and is not required to ability the level.
     With this setting enabled, you are not guaranteed the same amount of items
-    across all seeds. Additionally, some levels will have less ability cards.
+    across all seeds. Additionally, some levels will have less ability packs.
     === DOES NOT DO ANYTHING ATM ===
     """
     display_name = "Ability Packs - Trimming"
@@ -302,6 +312,7 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
+    local_abilities: LocalAbilities
     ability_pack: AbilityPackDomain
     ability_pack_sizes: AbilityPackSizes
     ability_pack_abilities: AbilityPackAbilities
