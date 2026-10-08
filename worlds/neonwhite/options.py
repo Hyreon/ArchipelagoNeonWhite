@@ -82,7 +82,7 @@ class MissionUnlockMethod(Choice):
     option_missions = 2
     option_levels = 3
     option_ability_pack = 4
-    default = 1
+    default = option_ranks
 
 class StartingLevelCount(Range):
     """
@@ -199,18 +199,39 @@ class DeathLinkResets(Range):
     range_end = 50
     default = 20
 
-class AbilityPackDomain(OptionList):
+class LocalAbilityDomain(OptionList):
     """
-    By default, items are obtained once per world.
+    By default, abilities are items, obtained once per world.
     However, you can split items of your choice
     to be distributed in packs across levels or missions.
+    When using custom missions, you can use "Per Vanilla Mission"
+    to group it by vanilla mission rather than the generated mission.
     """
-    display_name = "Ability Packs"
-    option_disabled = 1
+    display_name = "Local Ability Scope"
+    option_global = 1
     option_per_vanilla_mission = 2
-    option_per_custom_mission = 3
+    option_per_mission = 3
     option_per_level = 4
     default = option_disabled
+
+class LocalAbilities(OptionList):
+    """
+    What abilities are unlocked by themselves rather than as part of a pack.
+    When an item is listed here, it will not be added to the main pool.
+    Careful when messing with this - if it doesn't mach an ability name, the world won't generate.
+    Setting this to something like ["Katana"] will make each level/mission unlock the Katana separately.
+    """
+    display_name = "Local Abilities - Contents"
+    default = ["Book of Life"]
+
+class AbilityPackContents(OptionList):
+    """
+    What abilities are unlocked by local ability packs.
+    When an item is listed here, it will not be added to the main pool.
+    Careful when messing with this - if it doesn't match an ability name, or duplicates something in the local abilities, the world won't generate.
+    """
+    display_name = "Ability Packs - Contents"
+    default = ["Godspeed - Fire", "Stomp - Discard", "Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Purify - Discard", "Dominion - Fire", "Fireball - Discard", "Dominion - Discard"]
 
 class AbilityPackSizes(OptionList):
     """
@@ -220,30 +241,12 @@ class AbilityPackSizes(OptionList):
     where the first one grants 2/12 items, the second one grants 6/12,
     and the last one grants 4/12. it's a good curve for progressive.
     Some other examples:
-    [100.0] means one pack to grant every pack ability
+    [100.0] means one pack to grants every pack ability
     [10.0, 20.0, 30.0, 40.0] means 4 packs, each bigger than the last
+    [] means no packs are created.
     """
     display_name = "Ability Packs - Sizes"
     default = [16.7, 50.0, 33.3]
-
-class LocalAbilities(OptionList):
-    """
-    What abilities are unlocked by themselves rather than as part of a pack.
-    When an item is listed here, it will not be added to the main pool.
-    Careful when messing with this - if it doesn't mach an ability name, the world won't generate.
-    Setting this to something like ["Book of Life"] will make each Book of Life level unlock its page separately.
-    """
-    display_name = "Local Abilities"
-    default = []
-
-class AbilityPackAbilities(OptionList):
-    """
-    What abilities are unlocked by ability packs.
-    When an item is listed here, it will not be added to the main pool.
-    Careful when messing with this - if it doesn't match an ability name, or duplicates something in the local abilities, the world won't generate.
-    """
-    display_name = "Ability Packs - Affected Abilities"
-    default = ["Godspeed - Fire", "Stomp - Discard", "Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Purify - Discard", "Dominion - Fire", "Fireball - Discard", "Dominion - Discard"]
 
 class AbilityPackSmoothing(OptionList):
     """
@@ -312,10 +315,10 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
+    local_ability_domain: LocalAbilityDomain
     local_abilities: LocalAbilities
-    ability_pack: AbilityPackDomain
-    ability_pack_sizes: AbilityPackSizes
     ability_pack_abilities: AbilityPackAbilities
+    ability_pack_sizes: AbilityPackSizes
     ability_pack_smoothing: AbilityPackSmoothing
     ability_pack_trimming: AbilityPackTrim
     ability_pack_progressive: AbilityPackIsProgressive
