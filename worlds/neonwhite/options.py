@@ -81,7 +81,7 @@ class MissionUnlockMethod(Choice):
     option_ranks = 1
     option_missions = 2
     option_levels = 3
-    option_ability_pack = 4
+    option_ability_packs = 4
     default = option_ranks
 
 class StartingLevelCount(Range):
@@ -199,7 +199,7 @@ class DeathLinkResets(Range):
     range_end = 50
     default = 20
 
-class LocalAbilityDomain(OptionList):
+class LocalAbilities(OptionList):
     """
     By default, abilities are items, obtained once per world.
     However, you can split items of your choice
@@ -214,7 +214,7 @@ class LocalAbilityDomain(OptionList):
     option_per_level = 4
     default = option_disabled
 
-class LocalAbilities(OptionList):
+class LocalAbilityContents(OptionList):
     """
     What abilities are unlocked by themselves rather than as part of a pack.
     When an item is listed here, it will not be added to the main pool.
@@ -315,9 +315,9 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
-    local_ability_domain: LocalAbilityDomain
-    local_abilities: LocalAbilities
-    ability_pack_abilities: AbilityPackAbilities
+    local_ability_zones: LocalAbilities
+    local_ability_contents: LocalAbilityContents
+    ability_pack_contents: AbilityPackContents
     ability_pack_sizes: AbilityPackSizes
     ability_pack_smoothing: AbilityPackSmoothing
     ability_pack_trimming: AbilityPackTrim

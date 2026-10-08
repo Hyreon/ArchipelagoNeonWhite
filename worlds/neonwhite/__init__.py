@@ -351,6 +351,16 @@ class NeonWhiteWorld(World):
 
         return access_order
 
+    def zone_for(self, level):
+        if self.options.local_ability_zones == LocalAbilities.option_per_level:
+            return level
+        elif self.options.local_ability_zones == LocalAbilities.option_per_mission:
+            for connection in world.get_region("Level: " + level).entrances:
+                return connection.connected_region.name
+            raise RuntimeError(f"No region was assigned to the level {level}")
+        elif self.options.local_ability_zones == LocalAbilities.option_per_vanilla_mission:
+            return default_mission_of(level)
+
     @staticmethod
     def interpret_slot_data(slot_data: dict[str, Any]) -> dict[str, Any]:
         extra: dict[str, Any] = {}  # pyright: ignore[reportExplicitAny]

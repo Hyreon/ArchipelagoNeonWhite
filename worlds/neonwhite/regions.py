@@ -31,6 +31,16 @@ neon_white_missions_sq = [
     ("Yellow Sidequests", 8),
 ]
 
+def default_mission_of(level):
+    level_number = (neon_white_levels_normal + neon_white_levels_sidequests).index(level)
+    levels_scanned = 0
+    for mission in (neon_white_missions + neon_white_missions_sq):
+        levels_here = mission[1]
+        if levels_scanned + levels_here > level_number:
+            return mission[0]
+        else:
+            levels_scanned += levels_here
+
 def names_of_missions(mission_list): # abstraction, in case we change the internal format of missions and their counts later
     return (m[0] for m in mission_list)
 

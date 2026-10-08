@@ -6,7 +6,7 @@ from math import floor
 from typing import TYPE_CHECKING, final
 
 from BaseClasses import MultiWorld
-from rule_builder.rules import False_, Has, HasAll, True_
+from rule_builder.rules import False_, Has, HasAll, HasAny, True_
 
 from . import NeonWhiteOptions, data
 from .locations import (
@@ -129,7 +129,7 @@ class LevelRequirementSet:
                 return True
         return False
 
-    def make_rule(self, level: str, medal: Medal, tiered_access: [[str]] = None) -> "Rule":
+    def make_rule(self, level: str, medal: Medal, world = None) -> "Rule":
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         rule = False_()
 
@@ -137,14 +137,12 @@ class LevelRequirementSet:
             if (solution == LevelRequirements.FistOnly):
                 return True_()
 
-            # we could cut out duplicate abilities for performance,
-            # but then we could not later have abilities come from different sources
             abilities = solution.to_list()
-            rule |= HasAll(*abilities)
-            if tiered_access is not None:
-                for i, abilities_in_tier in enumerate(tiered_access, start=1):
-                    remaining_abilities = [ability for ability in abilities if ability not in abilities_in_tier]
-                    rule |= (Has(level, i) & HasAll(*remaining_abilities))
+            if world is None or world.ability_pack == LocalAbilityDomain.option_disabled:
+                rule |= HasAll(*abilities)
+            else:
+                rule |= has_abilities_in(world, level, abilities)
+
         return rule
 
 
@@ -152,6 +150,40 @@ class LevelRequirementSet:
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         return self.requirements[level][medal_idx]
 
+# this function assumes the settings are respected and new items aren't cheated in, although the client will be able to use cheated items
+def has_abilities_in(world, level, abilities):
+
+    zone = world.zone_for(level)
+
+    local_ability_names = set(world.options.local_ability_contents.value).intersection(abilities)
+    local_abilities = [single_pack_name(zone, ability) for ability in local_ability_names]
+
+    pack_ability_names = set(world.options.ability_pack_contents.value).intersection(abilities)
+    remaining_pack_abilities = pack_ability_names
+
+    global_abilities = set(abilities) - local_ability_names - pack_ability_names
+
+    if not remaining_pack_abilities:
+        return (HasAll(*local_abilities) & HasAll(*global_abilities))
+
+    if world.options.ability_pack_progressive.value:
+        for i,ability_pack in enumerate(world.ability_packs[zone], start=1):
+            remaining_pack_abilities -= ability_pack
+            if not remaining_pack_abilities:
+                return (Has(progressive_pack_name(zone), i) & HasAll(*local_abilities) & HasAll(*global_abilities))
+    elif len(world.ability_packs[zone]) == 1:
+        return (Has(normal_pack_name(zone)) & HasAll(*local_abilities) & HasAll(*global_abilities))
+    else:
+        relevant_packs = []
+        for i,ability_pack in enumerate(world.ability_packs[zone], start=1):
+            if remaining_pack_abilities.intersection(ability_pack):
+                remaining_pack_abilities -= ability_pack
+                relevant_packs.append(numbered_pack_name(zone, i))
+                if not remaining_pack_abilities:
+                    return (HasAll(*relevant_packs) & HasAll(*local_abilities) & HasAll(*global_abilities))
+        # failsafe rule: expect the pack items as single items, even if those items don't exist
+        remaining_pack_abilities_as_single_items = [single_pack_name(zone, ability) for ability in remaining_pack_abilities]
+        return (HasAll(*relevant_packs) & HasAll(*local_abilities) & HasAll(*global_abilities) & HasAll(*remaining_pack_abilities_as_single_items))
 
 def vanilla_items() -> [str]:
     from importlib.resources import files
@@ -310,6 +342,11 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
                 case MissionUnlockMethod.option_ranks:
                     neonrank_count = get_mission_rank_required(world, i + 1)
                     world.set_rule(entrance, Has("Neon Rank", neonrank_count))
+                case MissionUnlockMethod.option_ability_packs:
+                    if options.local_ability_zones == LocalAbilities.option_per_mission:
+                        world.set_rule(entrance, HasAny(*possible_packs_for(mission_list[i])))
+                    else:
+                        pass # if using vanilla missions or levels, no unlock rule required
 
         if world.use_levels:
             level_count = (neon_white_missions + neon_white_missions_sq)[i][1]
@@ -321,29 +358,33 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
 
         for _ in range(level_count):
             
-            tiered_access = (build_tiered_access_from(world.access_order[level_total], world.options.progressive_access_tiers.value)
-                if world.options.unlock_method == MissionUnlockMethod.option_progressive_levels
-                else None
-            )
-            
             level_name = world.ordered_levels[level_total]
             level_total += 1
 
             _ = mission_region.connect(world.get_region("Level: " + level_name),
-                f"{mission_region.name} to {level_name}",
-                Has(level_name) if world.use_levels else None)
+                f"{mission_region.name} to {level_name}")
+            if world.use_levels:
+                world.set_rule(entrance, Has(level_name))
+            elif options.unlock_method == MissionUnlockMethod.option_ability_packs:
+                if options.local_ability_zones == LocalAbilities.options_per_level:
+                    world.set_rule(entrance, HasAny(*possible_packs_for(level)))
+                elif options.local_ability_zones == LocalAbilities.options_per_vanilla_level:
+                    world.set_rule(entrance, HasAny(*possible_packs_for(default_mission_of(level))))
+                else:
+                    pass # if using loaded missions, no unlock rule required
+
             if level_name in neon_white_levels_normal or level_name in neon_white_levels_giftless:
                 for medal in medals:
                     world.set_rule(world.get_location(f"{level_name} {medal.name} Completion"),
-                        world.requirement.make_rule(level_name, Medal(medal), tiered_access))
+                        world.requirement.make_rule(level_name, Medal(medal), world))
 
                 if level_name not in neon_white_levels_giftless and world.options.gifts:
                     world.set_rule(world.get_location(level_name + " Gift"),
-                        world.requirement.make_rule(level_name, Medal.Gift, tiered_access))
+                        world.requirement.make_rule(level_name, Medal.Gift, world))
 
             else:
                 world.set_rule(world.get_location(level_name + " Completion"),
-                    world.requirement.make_rule(level_name, max(medals, default=Medal.Bronze), tiered_access))
+                    world.requirement.make_rule(level_name, max(medals, default=Medal.Bronze), world))
 
     from Utils import visualize_regions
     visualize_regions(central_heaven, "neon_white_regions.puml")
