@@ -22,7 +22,13 @@ from .options import (
     LocalAbilities
 )
 from .regions import neon_white_missions, neon_white_missions_sq, default_mission_of
-from .items import possible_packs_for
+from .items import (
+    possible_packs_for,
+    progressive_pack_name,
+    normal_pack_name,
+    numbered_pack_name,
+    single_pack_name
+)
 
 if TYPE_CHECKING:
     from rule_builder.rules import Rule
@@ -143,8 +149,9 @@ class LevelRequirementSet:
             if world is None or world.options.local_ability_zones == LocalAbilities.option_disabled:
                 rule |= HasAll(*abilities)
             else:
-                rule |= has_abilities_in(world, level, abilities)
+                rule |= local_rule(world, level, abilities)
 
+        print(level, rule)
         return rule
 
 
@@ -152,8 +159,8 @@ class LevelRequirementSet:
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         return self.requirements[level][medal_idx]
 
-# this function assumes the settings are respected and new items aren't cheated in, although the client will be able to use cheated items
-def has_abilities_in(world, level, abilities):
+# this logic assumes the config file is respected, and new items aren't cheated in. that would explode the options
+def local_rule(world, level, abilities):
 
     zone = world.zone_for(level)
     zone_id = world.zone_id_for(level)
@@ -171,7 +178,7 @@ def has_abilities_in(world, level, abilities):
 
     if world.options.ability_pack_progressive.value:
         for i,ability_pack in enumerate(world.ability_packs[zone_id], start=1):
-            remaining_pack_abilities -= ability_pack
+            remaining_pack_abilities -= set(ability_pack)
             if not remaining_pack_abilities:
                 return (Has(progressive_pack_name(zone), i) & HasAll(*local_abilities) & HasAll(*global_abilities))
     elif len(world.ability_packs[zone_id]) == 1:
@@ -180,7 +187,7 @@ def has_abilities_in(world, level, abilities):
         relevant_packs = []
         for i,ability_pack in enumerate(world.ability_packs[zone_id], start=1):
             if remaining_pack_abilities.intersection(ability_pack):
-                remaining_pack_abilities -= ability_pack
+                remaining_pack_abilities -= set(ability_pack)
                 relevant_packs.append(numbered_pack_name(zone, i))
                 if not remaining_pack_abilities:
                     return (HasAll(*relevant_packs) & HasAll(*local_abilities) & HasAll(*global_abilities))
@@ -194,7 +201,7 @@ def vanilla_items() -> [str]:
     json_data = json.loads(file.read())
     items_in_levels = []
     for entry in json_data:
-        print(entry)
+        # print(entry)
         for solution in json_data[entry]:
             if solution["k"] == KnowledgeDifficulty.option_vanilla and solution["e"] == ExecutionDifficulty.option_vanilla:
                 solution_as_string_list = LevelRequirements(solution["r"]).to_list()
@@ -285,12 +292,6 @@ def get_mission_rank_required(world: "NeonWhiteWorld", mission: int) -> int:
     lenience_value = 10 # How sharp the curve is, higher = slower rank req but sharper spike near the end
     normal_value = (pow(lenience_value, mission_fraction) - 1) / (lenience_value - 1)
     return floor(world.ranks_required * normal_value)
-
-def build_tiered_access_from(abilities: [str], sizes: [int]):
-    output = []
-    for size in sizes:
-        output.append(abilities[:size])
-    return output
 
 def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhiteOptions):
     medals = [Medal(x) for x in options.medal_select]

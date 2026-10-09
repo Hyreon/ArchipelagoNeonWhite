@@ -55,13 +55,13 @@ abilities = [
 ]
 
 def progressive_pack_name(zone: str):
-    return f"{zone} Progressive Abilities"
+    return f"{zone} - Progressive Abilities"
 
 def normal_pack_name(zone: str):
-    return f"{zone} Ability Pack"
+    return f"{zone} - Ability Pack"
 
 def numbered_pack_name(zone: str, number: int):
-    return f"{zone} Ability Pack {number}"
+    return f"{zone} - Ability Pack {number}"
 
 def single_pack_name(zone: str, contents: str):
     return f"{contents} - {zone}"

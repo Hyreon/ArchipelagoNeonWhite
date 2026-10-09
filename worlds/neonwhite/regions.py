@@ -42,11 +42,14 @@ def default_mission_of(level):
         else:
             levels_scanned += levels_here
 
-def default_mission_select_order():
-    return [mission_context[0] for mission_context in (neon_white_missions + neon_white_missions_sq)]
+def default_mission_select_order(sidequests = True):
+    missions = list(neon_white_missions)
+    if sidequests:
+        missions += neon_white_missions_sq
+    return [mission_context[0] for mission_context in missions]
 
 def names_of_missions(mission_list): # abstraction, in case we change the internal format of missions and their counts later
-    return (m[0] for m in mission_list)
+    return list(m[0] for m in mission_list)
 
 def create_regions(player: int, multiworld: MultiWorld, options: NeonWhiteOptions):
     if (options.unlock_method == MissionUnlockMethod.option_levels):

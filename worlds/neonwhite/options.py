@@ -235,27 +235,25 @@ class LocalAbilityContents(OptionList):
 
 class AbilityPackSizes(OptionList):
     """
-    The size of each ability pack, and the amount of packs, rounded to the nearest percent.
-    This must add up to 100%.
-    The default settings [16.7, 50.0, 33.3] add 3 packs per zone,
-    where the first one grants 2/12 items, the second one grants 6/12,
-    and the last one grants 4/12. it's a good curve for progressive.
-    Some other examples:
-    [100.0] means one pack to grants every pack ability
-    [10.0, 20.0, 30.0, 40.0] means 4 packs, each bigger than the last
-    [] means no packs are created.
+    The size of each ability pack relative to each other,
+    and the amount of packs.
+    The default of [3, 5, 4] makes pack 2 the biggest,
+    with 5/12 items. Pack 1 has 3/12 and pack 3 has 4/12.
+    It is designed for progressive packs to give a satisfying arc.
+    If there are fewer than 12 relevant items, or more than
+    12 relevant items, the game will adjust accordingly.
     """
     display_name = "Ability Packs - Sizes"
-    default = [16.7, 50.0, 33.3]
+    default = [3, 5, 4]
 
 class AbilityPackSmoothing(OptionList):
     """
     With purely random abilities, you aren't guaranteed anything useful. Pack smoothing fixes that.
     This overrides the pack size. You need a lot of abilities to do anything in some levels, even at expert or master level.
-    This logic has little effect on missions but is still applied.
+    This logic has little effect on missions, but is still applied.
     No Smoothing: Your only assurance is that by your last pack, you have everything, including what you need.
     Traversal: Your first ability pack contains whatever you need to traverse some level in the zone at your skill level.
-    First Grants Check: Your first ability pack guarantees a check at your skill level, supposing you have all global items.
+    First Grants Check: Your first ability pack guarantees a check at your skill level, supposing you have all non-pack items.
     All Grant Check: If you have ability packs 1 to X, you will be able to clear at least X checks.
     === DOES NOT DO ANYTHING ATM ===
     """
