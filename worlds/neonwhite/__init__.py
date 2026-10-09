@@ -20,6 +20,7 @@ from .locations import (
     neon_white_levels_giftless,
     neon_white_levels_normal,
     neon_white_levels_sidequests,
+    level_id
 )
 
 #from .Locations import PTLocation, pt_locations, pt_location_groups
@@ -29,9 +30,10 @@ from .options import (
     KnowledgeDifficulty,
     MissionUnlockMethod,
     NeonWhiteOptions,
-    ProgressiveAccessTrim
+    AbilityPackTrim,
+    LocalAbilities
 )
-from .regions import create_regions
+from .regions import create_regions, default_mission_select_order, default_mission_of
 from .rules import (
     LevelRequirements,
     LevelRequirementSet,
@@ -116,8 +118,7 @@ class NeonWhiteWorld(World):
 
         self.use_levels = (
                 self.options.unlock_method == MissionUnlockMethod.option_levels
-             or self.options.unlock_method == MissionUnlockMethod.option_progressive_levels
-        )
+        )  # removed reference to progressive levels, the old system; TODO find out if use_levels is being used right in each case
 
         req_select = int(self.options.difficulty_knowledge)
         req_select += int(self.options.difficulty_execution) * 10
@@ -156,11 +157,11 @@ class NeonWhiteWorld(World):
             for x in self.early_levels:
                 self.multiworld.push_precollected(self.create_item(x))
 
-        if self.options.unlock_method == MissionUnlockMethod.option_progressive_levels:
-            self.access_order = self.generate_access_order()
+        if self.options.unlock_method == MissionUnlockMethod.option_ability_packs:
+            self.ability_packs = self.generate_ability_packs()
 
             self.vanilla_items = vanilla_items()
-            for i in range(0,len(self.access_order)):
+            for i in range(0,len(self.ability_packs)):
                 self.copies_for(i)  # makes adjustments
 
         if (self.options.difficulty_knowledge <= KnowledgeDifficulty.option_vanilla
@@ -185,7 +186,7 @@ class NeonWhiteWorld(World):
         loc_count = len(self.get_locations())  # pyright: ignore[reportArgumentType]
 
         # Exclude cards that are assigned to progressive levels
-        excluded_cards = [ability for ability in self.options.progressive_access_abilities.value]
+        excluded_cards = [ability for ability in self.options.ability_pack_contents.value]
 
         # Add soul cards
         itempool += [self.create_item(card) for card in get_items_from_category("Card") if card not in excluded_cards]
@@ -202,7 +203,7 @@ class NeonWhiteWorld(World):
                     self.ranks_required = int(total_ranks_clamp * (self.options.ranks_required_percent / 100))
 
                 itempool.extend(self.create_item("Neon Rank") for _ in range(total_ranks_clamp))
-            case MissionUnlockMethod.option_levels | MissionUnlockMethod.option_progressive_levels:
+            case MissionUnlockMethod.option_levels:
                 levels = neon_white_levels_normal + neon_white_levels_giftless
                 if self.options.sidequests:
                     levels.extend(neon_white_levels_sidequests)
@@ -227,47 +228,44 @@ class NeonWhiteWorld(World):
     def copies_for(self, level_index, safe = False):
         max_level_copies = (
             1 if self.options.unlock_method == MissionUnlockMethod.option_levels
-              else len(self.options.progressive_access_tiers.value)
+              else len(self.options.ability_pack_sizes.value)
         )
-        match self.options.progressive_access_trim:
-            case ProgressiveAccessTrim.option_constant:
-                return max_level_copies
-            case ProgressiveAccessTrim.option_flatten:
-                return max_level_copies # TODO stub
-            case ProgressiveAccessTrim.option_trim:
-                # this is a mess, isn't it?
-                # it's literally not possible to do this if any removable tier can contain more items than a lower, removable tier
-                # we'll need to fix that later by making the # of cards unlocked per progressive access item vary per group. later.
-                relevant_cards = set(self.vanilla_items[level_index]).intersection(self.options.progressive_access_abilities.value)
-                group_access_order = self.access_order[level_index].copy()
-                relevant_sections = []
-                irrelevant_sections = []
-                for start,end,section in self.access_into_sections(group_access_order): # looks at sections > 0
-                    if start == 0 or any(card in relevant_cards for card in section): #start = 0 is no cards, sometimes level access alone is enough to matter
-                        relevant_sections.append(section) # end - start is the length
-                    else:
-                        irrelevant_sections.append(section)
+        if not self.options.ability_pack_trimming:
+            return max_level_copies
+        else:
+            # this is a mess, isn't it?
+            # it's literally not possible to do this if any removable tier can contain more items than a lower, removable tier
+            # we'll need to fix that later by making the # of cards unlocked per progressive access item vary per group. later.
+            relevant_cards = set(self.vanilla_items[level_index]).intersection(self.options.ability_pack_contents.value)
+            group_ability_packs = self.ability_packs[level_index].copy()
+            relevant_sections = []
+            irrelevant_sections = []
+            for start,end,section in self.access_into_sections(group_ability_packs): # looks at sections > 0
+                if start == 0 or any(card in relevant_cards for card in section): #start = 0 is no cards, sometimes level access alone is enough to matter
+                    relevant_sections.append(section) # end - start is the length
+                else:
+                    irrelevant_sections.append(section)
 
-                if not safe:
-                    self.access_order[level_index].clear()
-                    for section in relevant_sections:
-                        self.access_order[level_index].extend(section)
-                    for section in irrelevant_sections:
-                        self.access_order[level_index].extend(section)
+            if not safe:
+                self.ability_packs[level_index].clear()
+                for section in relevant_sections:
+                    self.ability_packs[level_index].extend(section)
+                for section in irrelevant_sections:
+                    self.ability_packs[level_index].extend(section)
 
-                    print(level_index, ":", len(relevant_sections), "(", self.access_order[level_index], ") : ", relevant_cards)
+                print(level_index, ":", len(relevant_sections), "(", self.ability_packs[level_index], ") : ", relevant_cards)
 
-                return len(relevant_sections)
+            return len(relevant_sections)
 
-    def access_into_sections(self, group_access_order):
-        sizes = self.options.progressive_access_tiers.value
+    def access_into_sections(self, group_ability_packs):
+        sizes = self.options.ability_pack_sizes.value
         sections = []
         for i in range(0, len(sizes)):
             start = 0
             if i > 0:
                 start = sizes[i - 1]
             end = sizes[i]
-            sections.append((start, end, group_access_order[start:end].copy()))
+            sections.append((start, end, group_ability_packs[start:end].copy()))
         return sections
 
     def get_filler_item_name(self) -> str:
@@ -322,8 +320,8 @@ class NeonWhiteWorld(World):
                         for i in range(self.options.mission_count)
                 ]
         
-        if self.options.unlock_method == MissionUnlockMethod.option_progressive_levels:
-            extra["access_order"] = self.access_order
+        if self.ability_packs:
+            extra["ability_packs"] = self.ability_packs
         
         options_to_show = [
             "difficulty_knowledge", "difficulty_execution", "boof_shenanigans",
@@ -341,25 +339,41 @@ class NeonWhiteWorld(World):
             "options": self.options.as_dict(*options_to_show)
         } | extra
     
-    def generate_access_order(self) -> dict[str, Any]:
-        access_order = []
+    def generate_ability_packs(self) -> dict[str, Any]:
+        ability_packs = []
         num_groups = 121  # hard-coded BS for now
         for _ in range(0,num_groups):
-            order = self.options.progressive_access_abilities.value.copy()
+            order = self.options.ability_pack_contents.value.copy()
             self.random.shuffle(order)
-            access_order.append(order)
+            ability_packs.append(order)
 
-        return access_order
+        return ability_packs
 
     def zone_for(self, level):
         if self.options.local_ability_zones == LocalAbilities.option_per_level:
             return level
         elif self.options.local_ability_zones == LocalAbilities.option_per_mission:
-            for connection in world.get_region("Level: " + level).entrances:
-                return connection.connected_region.name
+            for connection in self.get_region("Level: " + level).entrances:
+                return connection.parent_region.name
             raise RuntimeError(f"No region was assigned to the level {level}")
         elif self.options.local_ability_zones == LocalAbilities.option_per_vanilla_mission:
             return default_mission_of(level)
+
+    def zone_id_for(self, level):
+        if self.options.local_ability_zones == LocalAbilities.option_per_level:
+            return level_id(level)
+        elif self.options.local_ability_zones != LocalAbilities.option_disabled:
+            print(self.options.local_ability_zones.value)
+            print(LocalAbilities.option_disabled)
+            print(self.options.local_ability_zones.value == LocalAbilities.option_disabled)
+            mission = self.zone_for(level)
+            vanilla_missions = default_mission_select_order()
+            print(mission, vanilla_missions)
+            if mission in vanilla_missions:
+                return vanilla_missions.index(mission)
+            else:
+                return int(mission.split(" ")[-1]) - 1
+
 
     @staticmethod
     def interpret_slot_data(slot_data: dict[str, Any]) -> dict[str, Any]:

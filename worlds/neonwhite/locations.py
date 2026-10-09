@@ -272,6 +272,9 @@ neon_white_level_name_internal = {
 
 # fmt: on
 
+def level_id(level: str):
+    return list(neon_white_level_name_internal.keys()).index(level)
+
 def neon_white_get_locations() -> dict[str, int]:
     locations_dict: dict[str, int] = {}
     level_id = NWLocation.starting_id

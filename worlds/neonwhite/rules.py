@@ -19,8 +19,10 @@ from .options import (
     ExecutionDifficulty,
     KnowledgeDifficulty,
     MissionUnlockMethod,
+    LocalAbilities
 )
-from .regions import neon_white_missions, neon_white_missions_sq
+from .regions import neon_white_missions, neon_white_missions_sq, default_mission_of
+from .items import possible_packs_for
 
 if TYPE_CHECKING:
     from rule_builder.rules import Rule
@@ -138,7 +140,7 @@ class LevelRequirementSet:
                 return True_()
 
             abilities = solution.to_list()
-            if world is None or world.ability_pack == LocalAbilityDomain.option_disabled:
+            if world is None or world.options.local_ability_zones == LocalAbilities.option_disabled:
                 rule |= HasAll(*abilities)
             else:
                 rule |= has_abilities_in(world, level, abilities)
@@ -154,6 +156,7 @@ class LevelRequirementSet:
 def has_abilities_in(world, level, abilities):
 
     zone = world.zone_for(level)
+    zone_id = world.zone_id_for(level)
 
     local_ability_names = set(world.options.local_ability_contents.value).intersection(abilities)
     local_abilities = [single_pack_name(zone, ability) for ability in local_ability_names]
@@ -167,15 +170,15 @@ def has_abilities_in(world, level, abilities):
         return (HasAll(*local_abilities) & HasAll(*global_abilities))
 
     if world.options.ability_pack_progressive.value:
-        for i,ability_pack in enumerate(world.ability_packs[zone], start=1):
+        for i,ability_pack in enumerate(world.ability_packs[zone_id], start=1):
             remaining_pack_abilities -= ability_pack
             if not remaining_pack_abilities:
                 return (Has(progressive_pack_name(zone), i) & HasAll(*local_abilities) & HasAll(*global_abilities))
-    elif len(world.ability_packs[zone]) == 1:
+    elif len(world.ability_packs[zone_id]) == 1:
         return (Has(normal_pack_name(zone)) & HasAll(*local_abilities) & HasAll(*global_abilities))
     else:
         relevant_packs = []
-        for i,ability_pack in enumerate(world.ability_packs[zone], start=1):
+        for i,ability_pack in enumerate(world.ability_packs[zone_id], start=1):
             if remaining_pack_abilities.intersection(ability_pack):
                 remaining_pack_abilities -= ability_pack
                 relevant_packs.append(numbered_pack_name(zone, i))
@@ -366,9 +369,9 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
             if world.use_levels:
                 world.set_rule(entrance, Has(level_name))
             elif options.unlock_method == MissionUnlockMethod.option_ability_packs:
-                if options.local_ability_zones == LocalAbilities.options_per_level:
+                if options.local_ability_zones == LocalAbilities.option_per_level:
                     world.set_rule(entrance, HasAny(*possible_packs_for(level)))
-                elif options.local_ability_zones == LocalAbilities.options_per_vanilla_level:
+                elif options.local_ability_zones == LocalAbilities.option_per_vanilla_mission:
                     world.set_rule(entrance, HasAny(*possible_packs_for(default_mission_of(level))))
                 else:
                     pass # if using loaded missions, no unlock rule required

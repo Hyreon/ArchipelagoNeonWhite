@@ -7,6 +7,7 @@ from .locations import (
     neon_white_levels_medals,
     neon_white_levels_normal,
     neon_white_levels_sidequests,
+    level_id
 )
 from .options import MissionUnlockMethod, NeonWhiteOptions
 
@@ -32,7 +33,7 @@ neon_white_missions_sq = [
 ]
 
 def default_mission_of(level):
-    level_number = (neon_white_levels_normal + neon_white_levels_sidequests).index(level)
+    level_number = level_id(level)
     levels_scanned = 0
     for mission in (neon_white_missions + neon_white_missions_sq):
         levels_here = mission[1]
@@ -41,12 +42,14 @@ def default_mission_of(level):
         else:
             levels_scanned += levels_here
 
+def default_mission_select_order():
+    return [mission_context[0] for mission_context in (neon_white_missions + neon_white_missions_sq)]
+
 def names_of_missions(mission_list): # abstraction, in case we change the internal format of missions and their counts later
     return (m[0] for m in mission_list)
 
 def create_regions(player: int, multiworld: MultiWorld, options: NeonWhiteOptions):
-    if (options.unlock_method == MissionUnlockMethod.option_levels
-        or options.unlock_method == MissionUnlockMethod.option_progressive_levels):
+    if (options.unlock_method == MissionUnlockMethod.option_levels):
         # Basegame missions
         mission_list = names_of_missions(neon_white_missions)
         print(mission_list)

@@ -61,10 +61,10 @@ def normal_pack_name(zone: str):
     return f"{zone} Ability Pack"
 
 def numbered_pack_name(zone: str, number: int):
-    return f"{zone} Ability Pack {n}"
+    return f"{zone} Ability Pack {number}"
 
 def single_pack_name(zone: str, contents: str):
-    return f"{ability} - {zone}"
+    return f"{contents} - {zone}"
 
 def possible_packs_for(zone: str):
     packs = [progressive_pack_name(zone), normal_pack_name(zone)]
@@ -103,13 +103,13 @@ nw_items: dict[str, NWItemData] = {
     normal_pack_name(zone): NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    numbered_pack_name(zone): NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
+    numbered_pack_name(zone, n): NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         for n in range(1, 11)
 } | {
     single_pack_name(zone, ability): NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
-        ability for ability in abilities
+        for ability in abilities
 }
 
 item_categories = [
