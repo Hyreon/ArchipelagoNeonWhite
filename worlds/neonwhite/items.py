@@ -12,7 +12,7 @@ class NWItem(Item):
     card_id = 500
     level_id = 600
     misc_id = 800
-    ability_progressive_id = 20000  # 121 levels + 18 vanilla missions + the 60 custom missions = 199
+    ability_progressive_id = 20000  # 121 levels + 15 vanilla missions + the 60 custom missions = 196
     ability_group_id       = 20200  # up to 10 copies by number (5 medals + gift + 4 extra for future proofing); 0 is for blank, when there's only one pack per zone
     ability_local_id       = 22400  # each of the 14 items per zone (levels without the item are included for simplicity, and for future proofing) # this is intended if a pack has 1 item, not used for now
 
@@ -31,7 +31,7 @@ def get_items_from_category(category: str) -> Iterable[str]:
 
 def possible_zones():
     zones = []
-    zones.extend(neon_white_level_name_internal.keys())
+    zones.extend(remap_zone_list(neon_white_level_name_internal.keys()))
     zones.extend(names_of_missions(neon_white_missions))
     zones.extend(names_of_missions(neon_white_missions_sq))
     zones.extend([f"Mission {n}" for n in range(1, 61)])
@@ -54,21 +54,36 @@ abilities = [
     "Dominion - Discard"
 ]
 
-def progressive_pack_name(zone: str):
+# Ben just HAD to be extra and name a mission and level the same thing >.<
+# it was so ELEGANT before this bug was uncovered
+def remap_third_temple(zone, do_remap_level_name):
+    if do_remap_level_name and zone == "The Third Temple":
+        return "Third Temple Boss"
+    else:
+        return zone  # literally ONE SWITCH for ALL MY FUNCTIONS it's whatever i don't care
+
+def remap_zone_list(zones):
+    return [remap_third_temple(zone, True) for zone in zones]
+
+def progressive_pack_name(zone: str, do_remap_level_name = None):
+    zone = remap_third_temple(zone, do_remap_level_name)
     return f"{zone} - Progressive Abilities"
 
-def normal_pack_name(zone: str):
+def normal_pack_name(zone: str, do_remap_level_name = None):
+    zone = remap_third_temple(zone, do_remap_level_name)
     return f"{zone} - Ability Pack"
 
-def numbered_pack_name(zone: str, number: int):
+def numbered_pack_name(zone: str, number: int, do_remap_level_name = None):
+    zone = remap_third_temple(zone, do_remap_level_name)
     return f"{zone} - Ability Pack {number}"
 
-def single_pack_name(zone: str, contents: str):
+def single_pack_name(zone: str, contents: str, do_remap_level_name = None):
+    zone = remap_third_temple(zone, do_remap_level_name)
     return f"{contents} - {zone}"
 
-def possible_packs_for(zone: str):
-    packs = [progressive_pack_name(zone), normal_pack_name(zone)]
-    packs.extend(numbered_pack_name(zone, x) for x in range(1, 11))
+def possible_packs_for(zone: str, do_remap_level_name = None):
+    packs = [progressive_pack_name(zone, do_remap_level_name), normal_pack_name(zone, do_remap_level_name)]
+    packs.extend(numbered_pack_name(zone, x, do_remap_level_name) for x in range(1, 11))
     return packs
 
 nw_items: dict[str, NWItemData] = {

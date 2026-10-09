@@ -165,12 +165,16 @@ class NeonWhiteWorld(World):
             for x in self.early_levels:
                 self.multiworld.push_precollected(self.create_item(x))
 
-        if len(self.options.ability_pack_sizes.value) != 0:
+        if (self.options.ability_pack_sizes.value and
+                self.options.ability_pack_contents.value and
+                self.options.local_ability_zones != LocalAbilities.option_disabled):
             self.ability_packs = self.generate_ability_packs()
 
-            self.vanilla_items = vanilla_items()
-            for i in range(0,len(self.ability_packs)):
-                self.copies_for(i)  # makes adjustments
+            # self.vanilla_items = vanilla_items()
+            # for i in range(0,len(self.ability_packs)):
+            #     self.copies_for(i)  # makes adjustments
+        else:
+            self.ability_packs = None
 
         if (self.options.difficulty_knowledge <= KnowledgeDifficulty.option_vanilla
             or self.options.difficulty_execution <= ExecutionDifficulty.option_casual):
@@ -202,21 +206,23 @@ class NeonWhiteWorld(World):
 
         zones = self.zones()
 
-        # Add local cards
-        itempool += [self.create_item(single_pack_name(zone, ability)) for zone in zones for ability in local_cards]
+        if self.options.local_ability_zones != LocalAbilities.option_disabled:
+            # Add local cards
+            itempool += [self.create_item(single_pack_name(zone, ability)) for zone in zones for ability in local_cards]
 
-        if self.options.ability_pack_progressive:
-            itempool += [self.create_item(progressive_pack_name(zone))
-                         for zone in zones
-                         for _ in range(1+len(self.options.ability_pack_sizes.value))]
-        else:
-            if len(self.options.ability_pack_sizes == 1):
-                itempool += [self.create_item(normal_pack_name(zone))
-                            for zone in zones]
-            else:
-                itempool += [self.create_item(numbered_pack_name(zone, number))
-                            for zone in zones
-                            for number in range(len(self.options.ability_pack_sizes.value))]
+            if self.ability_packs:
+                if self.options.ability_pack_progressive:
+                    itempool += [self.create_item(progressive_pack_name(zone))
+                                for zone in zones
+                                for _ in range(len(self.options.ability_pack_sizes.value))]
+                else:
+                    if len(self.options.ability_pack_sizes == 1):
+                        itempool += [self.create_item(normal_pack_name(zone))
+                                    for zone in zones]
+                    else:
+                        itempool += [self.create_item(numbered_pack_name(zone, number))
+                                    for zone in zones
+                                    for number in range(len(self.options.ability_pack_sizes.value))]
 
         match self.options.unlock_method:
             case MissionUnlockMethod.option_missions:
