@@ -5,6 +5,7 @@ from BaseClasses import Item, ItemClassification
 
 from .locations import neon_white_level_name_internal
 from .regions import neon_white_missions, neon_white_missions_sq, names_of_missions
+from .abilities import abilities
 
 class NWItem(Item):
     game: str = "Neon White"
@@ -36,23 +37,6 @@ def possible_zones():
     zones.extend(names_of_missions(neon_white_missions_sq))
     zones.extend([f"Mission {n}" for n in range(1, 61)])
     return zones
-
-abilities = [
-    "Katana",
-    "Book of Life",
-    "Purify - Fire",
-    "Purify - Discard",
-    "Elevate - Fire",
-    "Elevate - Discard",
-    "Godspeed - Fire",
-    "Godspeed - Discard",
-    "Stomp - Fire",
-    "Stomp - Discard",
-    "Fireball - Fire",
-    "Fireball - Discard",
-    "Dominion - Fire",
-    "Dominion - Discard"
-]
 
 # Ben just HAD to be extra and name a mission and level the same thing >.<
 # it was so ELEGANT before this bug was uncovered

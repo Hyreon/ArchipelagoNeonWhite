@@ -16,7 +16,12 @@ from Options import (
 )
 
 from .locations import neon_white_levels_medals
+from .abilities import abilities
 
+local_ability_groups = [
+    "Fires",
+    "Discards"
+]
 
 class KnowledgeDifficulty(Choice):
     """
@@ -199,39 +204,51 @@ class DeathLinkResets(Range):
     range_end = 50
     default = 20
 
-class LocalAbilities(Choice):
+class PerMissionContents(OptionList):
     """
-    By default, abilities are items, obtained once per world.
-    However, you can split items of your choice
-    to be distributed in packs across levels or missions.
-    When using custom missions, you can use "Per Vanilla Mission"
-    to group it by vanilla mission rather than the generated mission.
+    By default, discarding and firing each card is an item, obtained once per world.
+    You can assign items of your choice to be distributed multiple times, once per vanilla mission.
+    Be careful not to put the same ability in both per mission and per level, or the world won't generate!
+    Setting this to something like ["Elevate - Discard"] will mean you will get items like Rebirth - Elevate - Discard,
+    unlocking Elevate - Discard in all of those, and only those, levels.
     """
-    display_name = "Local Ability Scope"
+    display_name = "Local Abilities - Per Mission"
+    valid_keys = frozenset(local_ability_groups + abilities)
+    default = []
+
+class LocalUseRandomMissionContents(Toggle):
+    """
+    When off (by default), Local Abilities - Per Mission
+    are distributed based on vanilla missions, like Rebirth - Elevate - Discard.
+    Turning this on will distribute based on your
+    randomized missions, like Mission 1 - Elevate - Discard.
+    """
+    display_name = "Local Abilities - Use Randomized Missions"
+
+class PerLevelContents(OptionList):
+    """
+    By default, discarding and firing each card is an item, obtained once per world.
+    You can assign items of your choice to be distributed multiple times, once per level.
+    Be careful not to put the same ability in both per mission and per level, or the world won't generate!
+    Setting this to something like ["Elevate - Discard"] will mean you will get items like Cascade - Elevate - Discard,
+    unlocking Elevate - Discard in all of those, and only those, levels.
+    """
+    display_name = "Local Abilities - Per Level"
+    valid_keys = frozenset(local_ability_groups + abilities)
+    default = []
+
+class AbilityPackScope(Choice):
+    """
+    If local ability distribution is creating too many items,
+    you can always reduce the scope by putting them into packs.
+    A pack will grant multiple abilities for its zone when obtained.
+    """
+    display_name = "Ability Pack Scope"
     option_disabled = 1
-    option_per_vanilla_mission = 2
-    option_per_mission = 3
-    option_per_level = 4
+    option_per_mission = 2
+    option_per_level = 3
+    option_both = 4
     default = option_disabled
-
-class AbilityPackContents(OptionList):
-    """
-    What abilities are unlocked by local ability packs.
-    When an item is listed here, it will not be added to the main pool.
-    Careful when messing with this - if it doesn't match an ability name, the world won't generate.
-    """
-    display_name = "Ability Packs - Contents"
-    default = ["Godspeed - Fire", "Stomp - Discard", "Elevate - Discard", "Godspeed - Discard", "Elevate - Fire", "Stomp - Fire", "Purify - Fire", "Fireball - Fire", "Purify - Discard", "Dominion - Fire", "Fireball - Discard", "Dominion - Discard"]
-
-class LocalAbilityContents(OptionList):
-    """
-    What abilities are unlocked by themselves rather than as part of a pack.
-    When an item is listed here, it will not be added to the main pool.
-    Careful when messing with this - if it doesn't mach an ability name, or duplicates something in the pack abilities, the world won't generate.
-    Setting this to something like ["Katana", "Book of Life"] will make the Katana and the Book of Life each their own separate item for each zone.
-    """
-    display_name = "Local Abilities - Contents"
-    default = ["Book of Life"]
 
 class AbilityPackSizes(OptionList):
     """
@@ -246,34 +263,6 @@ class AbilityPackSizes(OptionList):
     display_name = "Ability Packs - Sizes"
     default = [3, 5, 4]
 
-class AbilityPackSmoothing(OptionList):
-    """
-    With purely random abilities, you aren't guaranteed anything useful. Pack smoothing fixes that.
-    This overrides the pack size. You need a lot of abilities to do anything in some levels, even at expert or master level.
-    This logic has little effect on missions, but is still applied.
-    No Smoothing: Your only assurance is that by your last pack, you have everything, including what you need.
-    Traversal: Your first ability pack contains whatever you need to traverse some level in the zone at your skill level.
-    First Grants Check: Your first ability pack guarantees a check at your skill level, supposing you have all non-pack items.
-    All Grant Check: If you have ability packs 1 to X, you will be able to clear at least X checks.
-    === DOES NOT DO ANYTHING ATM ===
-    """
-    display_name = "Ability Packs - Smoothing"
-    option_no_smoothing = 1
-    option_traversal = 2  # if every check wants an ability, you start with it
-    option_first_grants_check = 3  # picks a route to either gift or get >= the lowest medal, that isn't a superset of a solve for something smaller but still >= lower medal, and grants everything for at least it
-    option_all_grant_check = 4  # repeats this process for each pack, picking higher medals
-    default = option_traversal
-
-class AbilityPackTrim(Toggle):
-    """
-    When enabled, useless packs are removed.
-    A pack is useless if grants no new cards, and is not required to ability the level.
-    With this setting enabled, you are not guaranteed the same amount of items
-    across all seeds.
-    === DOES NOT DO ANYTHING ATM ===
-    """
-    display_name = "Ability Packs - Trimming"
-
 class AbilityPackIsProgressive(DefaultOnToggle):
     """
     If enabled, ability packs unlock abilities in a fixed
@@ -282,14 +271,6 @@ class AbilityPackIsProgressive(DefaultOnToggle):
     order depending on which ones you pick up.
     """
     display_name = "Ability Packs - Progressive"
-
-class AbilityPackVariation(DefaultOnToggle):
-    """
-    If enabled, the ability pack sizes are treated as a suggestion rather than a rule.
-    This has a stronger effect on levels with fewer cards.
-    === DOES NOT DO ANYTHING ATM ===
-    """
-    display_name = "Ability Packs - Vary Pack Size"
 
 
 @dataclass
@@ -313,11 +294,9 @@ class NeonWhiteOptions(PerGameCommonOptions):
     death_link_res: DeathLinkResets
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
-    local_ability_zones: LocalAbilities
-    local_ability_contents: LocalAbilityContents
-    ability_pack_contents: AbilityPackContents
+    per_mission_contents: PerMissionContents
+    local_use_random_mission_contents: LocalUseRandomMissionContents
+    per_level_contents: PerLevelContents
+    ability_pack_scope: AbilityPackScope
     ability_pack_sizes: AbilityPackSizes
-    ability_pack_smoothing: AbilityPackSmoothing
-    ability_pack_trimming: AbilityPackTrim
     ability_pack_progressive: AbilityPackIsProgressive
-    ability_pack_variation: AbilityPackVariation
