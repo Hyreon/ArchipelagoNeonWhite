@@ -264,6 +264,7 @@ class NeonWhiteWorld(World):
         if not self.options.ability_pack_trimming:
             return max_level_copies
         else:
+            raise ValueError("This setting (trimming) doesn't work. Don't go here.")
             # this is a mess, isn't it?
             # it's literally not possible to do this if any removable tier can contain more items than a lower, removable tier
             # we'll need to fix that later by making the # of cards unlocked per progressive access item vary per group. later.
@@ -284,7 +285,7 @@ class NeonWhiteWorld(World):
                 for section in irrelevant_sections:
                     self.ability_packs[level_index].extend(section)
 
-                print(level_index, ":", len(relevant_sections), "(", self.ability_packs[level_index], ") : ", relevant_cards)
+                # print(level_index, ":", len(relevant_sections), "(", self.ability_packs[level_index], ") : ", relevant_cards)
 
             return len(relevant_sections)
 
@@ -404,7 +405,7 @@ class NeonWhiteWorld(World):
 
             ability_packs.append(zone_packs)
 
-        print(ability_packs)
+        # print(ability_packs)
         return ability_packs
 
     def used_levels(self):

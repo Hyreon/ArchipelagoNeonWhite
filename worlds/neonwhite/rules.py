@@ -151,7 +151,6 @@ class LevelRequirementSet:
             else:
                 rule |= local_rule(world, level, abilities)
 
-        print(level, rule)
         return rule
 
 
@@ -365,15 +364,15 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
             level_name = world.ordered_levels[level_total]
             level_total += 1
 
-            _ = mission_region.connect(world.get_region("Level: " + level_name),
+            level_entrance = mission_region.connect(world.get_region("Level: " + level_name),
                 f"{mission_region.name} to {level_name}")
             if world.use_levels:
-                world.set_rule(entrance, Has(level_name))
+                world.set_rule(level_entrance, Has(level_name))
             elif options.unlock_method == MissionUnlockMethod.option_ability_packs:
                 if options.local_ability_zones == LocalAbilities.option_per_level:
-                    world.set_rule(entrance, HasAny(*possible_packs_for(level)))
+                    world.set_rule(level_entrance, HasAny(*possible_packs_for(level)))
                 elif options.local_ability_zones == LocalAbilities.option_per_vanilla_mission:
-                    world.set_rule(entrance, HasAny(*possible_packs_for(default_mission_of(level))))
+                    world.set_rule(level_entrance, HasAny(*possible_packs_for(default_mission_of(level))))
                 else:
                     pass # if using loaded missions, no unlock rule required
 

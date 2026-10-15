@@ -790,6 +790,7 @@ class CollectionState():
                     relevant_entrances = entrances.intersection(blocked_connections)
                     relevant_entrances.difference_update(queue)
                     queue.extend(relevant_entrances)
+        # print([blocked_connection for blocked_connection in self.blocked_connections[player]])
 
     def _update_reachable_regions_auto_indirect_conditions(self, player: int, queue: deque[Entrance]):
         reachable_regions = self.reachable_regions[player]
