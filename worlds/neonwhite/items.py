@@ -45,6 +45,12 @@ def zone_name(zone, map_to_level=None):
     else:
         return "Third Temple Mission"
 
+def zone_to_name(zone):
+    if zone == "Third Temple Boss" or zone == "Third Temple Mission":
+        return "The Third Temple"
+    else:
+        return zone
+
 def remap_zone_list(zones, map_to_level=None):
     return [zone_name(zone, map_to_level) for zone in zones]
 

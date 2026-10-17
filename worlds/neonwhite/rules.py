@@ -151,9 +151,25 @@ class LevelRequirementSet:
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         return self.requirements[level][medal_idx]
 
+def vanilla_items() -> [str]:
+    from importlib.resources import files
+    file = files(data).joinpath("nw_cr.json").open()
+    json_data = json.loads(file.read())
+    items_in_levels = []
+    for entry in json_data:
+        for solution in json_data[entry]:
+            if solution["k"] == KnowledgeDifficulty.option_vanilla and solution["e"] == ExecutionDifficulty.option_vanilla:
+                items_in_levels.append(LevelRequirements(solution["r"]).to_list())
+                break  # gift and medal completion have the same checks
+    return items_in_levels
+
+abilities_in_levels = vanilla_items()
+
 def local_items_from(world, level, abilities, per_level) -> list | None:
-    zone = world.zone_for(level, per_level)
-    return [local_item_name(zone, ability) for ability in abilities]
+    zone = level
+    if not per_level:
+        zone = world.mission_for_items_in(level)
+    return [local_item_name(zone, ability, per_level) for ability in abilities]
 
 def abilities_by_zone(world, level, abilities):
 
@@ -169,21 +185,7 @@ def abilities_by_zone(world, level, abilities):
     if per_level_requirement is None or per_mission_requirement is None:
         return None  # no solution
 
-    return global_items + per_level_requirement + per_mission_requirement
-
-def vanilla_items() -> [str]:
-    from importlib.resources import files
-    file = files(data).joinpath("nw_cr.json").open()
-    json_data = json.loads(file.read())
-    items_in_levels = []
-    for entry in json_data:
-        # print(entry)
-        for solution in json_data[entry]:
-            if solution["k"] == KnowledgeDifficulty.option_vanilla and solution["e"] == ExecutionDifficulty.option_vanilla:
-                solution_as_string_list = LevelRequirements(solution["r"]).to_list()
-                items_in_levels.append(solution_as_string_list)
-                continue
-    return items_in_levels
+    return list(global_items) + per_level_requirement + per_mission_requirement
 
 def import_json_to_data(know_diff: KnowledgeDifficulty, exec_diff: ExecutionDifficulty) -> LevelRequirementSet:
 

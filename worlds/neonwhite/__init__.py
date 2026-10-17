@@ -19,7 +19,8 @@ from .items import (
     nw_item_groups,
     nw_items,
     local_item_name,
-    remap_zone_list
+    remap_zone_list,
+    zone_to_name
 )
 from .locations import (
     checks_in_sets_lvl,
@@ -47,7 +48,7 @@ from .rules import (
     get_mission_rank_required,
     import_json_to_data,
     set_rules,
-    vanilla_items
+    abilities_in_levels
 )
 
 
@@ -102,7 +103,7 @@ class NeonWhiteWorld(World):
         return self.options.per_mission_contents.value or self.options.per_level_contents.value
 
     def using_custom_missions(self):
-        return self.options.unlock_method == MissionUnlockMethod.option_levels
+        return self.options.unlock_method != MissionUnlockMethod.option_levels
 
     def generate_early(self) -> None:
         if not self.player_name.isascii():
@@ -184,14 +185,29 @@ class NeonWhiteWorld(World):
         generics = [x for x in nw_item_groups["Filler"] if nw_items[x].id % 100 < 50]
         return [self.multiworld.random.choice(generics) if x == "Generic" else x for x in choices]
 
-    def create_local_ability_items(self, per_level):
+    def levels_in_mission(self, mission):
+        levels = [level for level in self.used_levels() if self.mission_for_items_in(level) == mission]  # performance nightmare, oh well!
+        return levels
 
-        contents = self.options.per_mission_contents if per_level else self.options.per_level_contents
+    def abilities_for(self, zone, per_level):
+        if per_level:
+            return abilities_in_levels[level_id(zone_to_name(zone))]
+        else:
+            full_list = [ability for level in self.levels_in_mission(zone) for ability in abilities_in_levels[level_id(level)]]
+            print(full_list)
+            return set(full_list)
+
+    def create_local_ability_items(self, abilities, per_level):
         zones = self.zones(per_level)
+        return [self.create_item(local_item_name(zone, ability, per_level)) for zone in zones for ability in abilities if ability in self.abilities_for(zone, per_level)]
 
-        # Add local cards
-        # TODO clean up items that aren't in the level/mission
-        return [self.create_item(local_item_name(zone, ability, per_level)) for zone in zones for ability in contents]
+    def mission_for_items_in(self, level):  # this is for items, not for the mission select, which may differ
+        if self.options.local_use_assigned_missions and self.using_custom_missions():
+            for connection in self.get_region("Level: " + level).entrances:
+                return connection.parent_region.name
+            raise RuntimeError(f"No region was assigned to the level {level}")
+        else:
+            return default_mission_of(level)
 
 
     def create_items(self):
@@ -207,8 +223,8 @@ class NeonWhiteWorld(World):
         itempool += [self.create_item(card) for card in get_items_from_category("Card") if card not in per_mission_cards and card not in per_level_cards]
 
         # Add local soul cards
-        itempool += self.create_local_ability_items(per_level = False)
-        itempool += self.create_local_ability_items(per_level = True)
+        itempool += self.create_local_ability_items(per_mission_cards, per_level = False)
+        itempool += self.create_local_ability_items(per_level_cards, per_level = True)
 
         match self.options.unlock_method:
             case MissionUnlockMethod.option_missions:
@@ -330,7 +346,7 @@ class NeonWhiteWorld(World):
     def zones(self, levels):
         if levels:
             return remap_zone_list(self.used_levels(), map_to_level=True)
-        elif self.options.local_use_assigned_missions or not self.using_custom_missions():
+        elif not self.options.local_use_assigned_missions or not self.using_custom_missions():
             return remap_zone_list(default_mission_select_order(self.options.sidequests), map_to_level=False)
         else:
             return [f"Mission {n + 1}" for n in range(self.options.mission_count)]
