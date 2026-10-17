@@ -14,6 +14,14 @@ ability_groups = {
     "Discards": [f"{card} - Discard" for card in normal_cards]
 }
 
+def map_abilities(collection):
+    output_collection = []
+    for item in collection:
+        if item in ability_groups.keys():
+            output_collection.extend(ability_groups[item])
+        else:
+            output_collection.append(item)
+    return output_collection
 
 abilities = [
     "Katana",

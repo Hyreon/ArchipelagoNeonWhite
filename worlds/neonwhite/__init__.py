@@ -50,6 +50,7 @@ from .rules import (
     set_rules,
     abilities_in_levels
 )
+from .abilities import map_abilities
 
 
 class NeonWhiteWeb(WebWorld):
@@ -112,6 +113,11 @@ class NeonWhiteWorld(World):
             raise OptionError("Non-filler in filler_weights")
 
         self.ordered_levels = []
+        self.per_mission_contents = map_abilities(self.options.per_mission_contents.value)
+        self.per_level_contents = map_abilities(self.options.per_level_contents.value)
+        overlap = set(self.per_mission_contents).intersection(self.per_level_contents)
+        if overlap:
+            raise ValueError(f"Cannot generate. Items must be per level or per mission, or neither, but not both: {overlap}")
 
         ut_regen = getattr(self.multiworld, "re_gen_passthrough", {})
         if (self.game in ut_regen):
@@ -186,7 +192,7 @@ class NeonWhiteWorld(World):
         return [self.multiworld.random.choice(generics) if x == "Generic" else x for x in choices]
 
     def levels_in_mission(self, mission):
-        levels = [level for level in self.used_levels() if self.mission_for_items_in(level) == mission]  # performance nightmare, oh well!
+        levels = [level for level in self.used_levels() if self.mission_for_items_in(level) == zone_to_name(mission)]  # performance nightmare, oh well!
         return levels
 
     def abilities_for(self, zone, per_level):
@@ -194,7 +200,6 @@ class NeonWhiteWorld(World):
             return abilities_in_levels[level_id(zone_to_name(zone))]
         else:
             full_list = [ability for level in self.levels_in_mission(zone) for ability in abilities_in_levels[level_id(level)]]
-            print(full_list)
             return set(full_list)
 
     def create_local_ability_items(self, abilities, per_level):
@@ -216,8 +221,8 @@ class NeonWhiteWorld(World):
         loc_count = len(self.get_locations())  # pyright: ignore[reportArgumentType]
 
         # Exclude cards that are assigned to progressive levels
-        per_mission_cards = [ability for ability in self.options.per_mission_contents.value]
-        per_level_cards = [ability for ability in self.options.per_level_contents.value]
+        per_mission_cards = [ability for ability in self.per_mission_contents]
+        per_level_cards = [ability for ability in self.per_level_contents]
 
         # Add global soul cards
         itempool += [self.create_item(card) for card in get_items_from_category("Card") if card not in per_mission_cards and card not in per_level_cards]

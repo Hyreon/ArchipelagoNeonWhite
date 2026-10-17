@@ -173,8 +173,8 @@ def local_items_from(world, level, abilities, per_level) -> list | None:
 
 def abilities_by_zone(world, level, abilities):
 
-    per_level_abilities = set(world.options.per_level_contents.value).intersection(abilities)
-    per_mission_abilities = set(world.options.per_mission_contents.value).intersection(abilities)
+    per_level_abilities = set(world.per_level_contents).intersection(abilities)
+    per_mission_abilities = set(world.per_mission_contents).intersection(abilities)
 
     global_items = set(abilities) - per_level_abilities - per_mission_abilities
     result = (set(global_items), None, 0)  # tuple representing the answer
