@@ -32,42 +32,44 @@ def get_items_from_category(category: str) -> Iterable[str]:
 
 def possible_zones():
     zones = []
-    zones.extend(remap_zone_list(neon_white_level_name_internal.keys()))
-    zones.extend(names_of_missions(neon_white_missions))
-    zones.extend(names_of_missions(neon_white_missions_sq))
-    zones.extend([f"Mission {n}" for n in range(1, 61)])
+    zones.extend(remap_zone_list(neon_white_level_name_internal.keys(), map_to_level = True))
+    zones.extend(remap_zone_list(names_of_missions(neon_white_missions), map_to_level = False))
+    zones.extend(names_of_missions(neon_white_missions_sq))  # no need to remap
+    zones.extend([f"Mission {n}" for n in range(1, 61)])  # no need to remap
     return zones
 
 # Ben just HAD to be extra and name a mission and level the same thing >.<
 # it was so ELEGANT before this bug was uncovered
-def remap_third_temple(zone, do_remap_level_name):
-    if do_remap_level_name and zone == "The Third Temple":
+def zone_name(zone, map_to_level=None):
+    if zone != "The Third Temple" or map_to_level is None:
+        return zone
+    if map_to_level:
         return "Third Temple Boss"
     else:
-        return zone  # literally ONE SWITCH for ALL MY FUNCTIONS it's whatever i don't care
+        return "Third Temple Mission"
 
-def remap_zone_list(zones):
-    return [remap_third_temple(zone, True) for zone in zones]
+def remap_zone_list(zones, map_to_level=None):
+    return [zone_name(zone, map_to_level) for zone in zones]
 
-def progressive_pack_name(zone: str, do_remap_level_name = None):
-    zone = remap_third_temple(zone, do_remap_level_name)
+def progressive_pack_name(zone: str, map_to_level):
+    zone = zone_name(zone, map_to_level)
     return f"{zone} - Progressive Abilities"
 
-def normal_pack_name(zone: str, do_remap_level_name = None):
-    zone = remap_third_temple(zone, do_remap_level_name)
+def normal_pack_name(zone: str, map_to_level):
+    zone = zone_name(zone, map_to_level)
     return f"{zone} - Ability Pack"
 
-def numbered_pack_name(zone: str, number: int, do_remap_level_name = None):
-    zone = remap_third_temple(zone, do_remap_level_name)
+def numbered_pack_name(zone: str, number: int, map_to_level):
+    zone = zone_name(zone, map_to_level)
     return f"{zone} - Ability Pack {number}"
 
-def single_pack_name(zone: str, contents: str, do_remap_level_name = None):
-    zone = remap_third_temple(zone, do_remap_level_name)
-    return f"{contents} - {zone}"
+def local_item_name(zone: str, contents: str, map_to_level):
+    zone = zone_name(zone, map_to_level)
+    return f"{zone} - {contents}"
 
-def possible_packs_for(zone: str, do_remap_level_name = None):
-    packs = [progressive_pack_name(zone, do_remap_level_name), normal_pack_name(zone, do_remap_level_name)]
-    packs.extend(numbered_pack_name(zone, x, do_remap_level_name) for x in range(1, 11))
+def possible_packs_for(zone: str, map_to_level):
+    packs = [progressive_pack_name(zone, map_to_level), normal_pack_name(zone, map_to_level)]
+    packs.extend(numbered_pack_name(zone, x, map_to_level) for x in range(1, 11))
     return packs
 
 nw_items: dict[str, NWItemData] = {
@@ -96,17 +98,17 @@ nw_items: dict[str, NWItemData] = {
     f"{level}": NWItemData("Level", NWItem.level_id + i, ItemClassification.progression)
         for i, level in enumerate(neon_white_level_name_internal.keys())
 } | {
-    progressive_pack_name(zone): NWItemData("Progressive Abilities", NWItem.ability_progressive_id + i, ItemClassification.progression)
+    progressive_pack_name(zone, None): NWItemData("Ability Pack", NWItem.ability_progressive_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    normal_pack_name(zone): NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
+    normal_pack_name(zone, None): NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
 } | {
-    numbered_pack_name(zone, n): NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
+    numbered_pack_name(zone, n, None): NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         for n in range(1, 11)
 } | {
-    single_pack_name(zone, ability): NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
+    local_item_name(zone, ability, None): NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         for ability in abilities
 }
@@ -117,8 +119,7 @@ item_categories = [
     "Filler",
     "Level",
     "Local Ability",
-    "Ability Pack",
-    "Progressive Abilities"
+    "Ability Pack"
 ]
 
 nw_item_groups = { cat: set(get_items_from_category(cat)) for cat in item_categories }

@@ -18,10 +18,11 @@ from .items import (
     get_items_from_category,
     nw_item_groups,
     nw_items,
-    single_pack_name,
+    local_item_name,
     progressive_pack_name,
     normal_pack_name,
-    numbered_pack_name
+    numbered_pack_name,
+    remap_zone_list
 )
 from .locations import (
     checks_in_sets_lvl,
@@ -40,8 +41,7 @@ from .options import (
     KnowledgeDifficulty,
     MissionUnlockMethod,
     NeonWhiteOptions,
-    AbilityPackTrim,
-    LocalAbilities
+    AbilityPackScope
 )
 from .regions import create_regions, default_mission_select_order, default_mission_of
 from .rules import (
@@ -101,6 +101,27 @@ class NeonWhiteWorld(World):
         self.use_levels: bool = False
 
         self.requirement: LevelRequirementSet
+
+    def ability_pack_scope_includes_missions(self, assigned=None):
+        return (
+            self.options.ability_pack_sizes.value and max(self.options.ability_pack_sizes.value)  # pack sizes aren't set to empty
+            and self.options.per_mission_contents.value  # there are cards assigned to be per-mission
+            and (self.options.ability_pack_scope == AbilityPackScope.option_per_mission)  # packs include per_mission local items
+            and (assigned is None or self.options.local_use_assigned_missions == assigned)  # mission type matches expectation, if any
+        )
+
+    def ability_pack_scope_includes_levels(self):
+        return (
+            self.options.ability_pack_sizes.value and max(self.options.ability_pack_sizes.value)  # pack sizes aren't set to empty
+            and self.options.per_level_contents.value  # there are cards assigned to be per-level
+            and (self.options.ability_pack_scope == AbilityPackScope.option_per_level)
+        )
+
+    def using_packs(self):
+        return self.ability_pack_scope_includes_levels() or self.ability_pack_scope_includes_missions()
+
+    def using_custom_missions(self):
+        return self.options.unlock_method == MissionUnlockMethod.option_levels
 
     def generate_early(self) -> None:
         if not self.player_name.isascii():
@@ -165,9 +186,7 @@ class NeonWhiteWorld(World):
             for x in self.early_levels:
                 self.multiworld.push_precollected(self.create_item(x))
 
-        if (self.options.ability_pack_sizes.value and
-                self.options.ability_pack_contents.value and
-                self.options.local_ability_zones != LocalAbilities.option_disabled):
+        if self.using_packs():
             self.ability_packs = self.generate_ability_packs()
 
             # self.vanilla_items = vanilla_items()
@@ -192,37 +211,44 @@ class NeonWhiteWorld(World):
         generics = [x for x in nw_item_groups["Filler"] if nw_items[x].id % 100 < 50]
         return [self.multiworld.random.choice(generics) if x == "Generic" else x for x in choices]
 
+    def create_local_ability_items(self, per_level):
+
+        contents = self.options.per_mission_contents if per_level else self.options.per_level_contents
+        zones = self.zones(per_level)
+
+        if (not per_level and not self.ability_pack_scope_includes_missions()) or (per_level and not self.ability_pack_scope_includes_levels()):
+            # Add local cards
+            return [self.create_item(local_item_name(zone, ability)) for zone in zones for ability in contents]
+        else:
+            if self.options.ability_pack_progressive:
+                return [self.create_item(progressive_pack_name(zone))
+                            for zone in zones
+                            for _ in range(len(self.options.ability_pack_sizes.value))]
+            else:
+                if len(self.options.ability_pack_sizes == 1):
+                    return [self.create_item(normal_pack_name(zone))
+                                for zone in zones]
+                else:
+                    return [self.create_item(numbered_pack_name(zone, number))
+                                for zone in zones
+                                for number in range(len(self.options.ability_pack_sizes.value))]
+
+
     def create_items(self):
         itempool: list[Item] = []
 
         loc_count = len(self.get_locations())  # pyright: ignore[reportArgumentType]
 
         # Exclude cards that are assigned to progressive levels
-        pack_cards = [ability for ability in self.options.ability_pack_contents.value]
-        local_cards = [ability for ability in self.options.local_ability_contents.value]
+        per_mission_cards = [ability for ability in self.options.per_mission_contents.value]
+        per_level_cards = [ability for ability in self.options.per_level_contents.value]
 
         # Add soul cards
-        itempool += [self.create_item(card) for card in get_items_from_category("Card") if card not in pack_cards and card not in local_cards]
+        itempool += [self.create_item(card) for card in get_items_from_category("Card") if card not in per_mission_cards and card not in per_level_cards]
 
-        zones = self.zones()
-
-        if self.options.local_ability_zones != LocalAbilities.option_disabled:
-            # Add local cards
-            itempool += [self.create_item(single_pack_name(zone, ability)) for zone in zones for ability in local_cards]
-
-            if self.ability_packs:
-                if self.options.ability_pack_progressive:
-                    itempool += [self.create_item(progressive_pack_name(zone))
-                                for zone in zones
-                                for _ in range(len(self.options.ability_pack_sizes.value))]
-                else:
-                    if len(self.options.ability_pack_sizes == 1):
-                        itempool += [self.create_item(normal_pack_name(zone))
-                                    for zone in zones]
-                    else:
-                        itempool += [self.create_item(numbered_pack_name(zone, number))
-                                    for zone in zones
-                                    for number in range(len(self.options.ability_pack_sizes.value))]
+        # Add local soul cards
+        itempool += self.create_local_ability_items(per_level = False)
+        itempool += self.create_local_ability_items(per_level = True)
 
         match self.options.unlock_method:
             case MissionUnlockMethod.option_missions:
@@ -241,6 +267,21 @@ class NeonWhiteWorld(World):
                 if self.options.sidequests:
                     levels.extend(neon_white_levels_sidequests)
                 itempool.extend([self.create_item(level) for level in levels])
+            case MissionUnlockMethod.option_ability_packs:
+                if not self.using_packs():  # don't build, and try to diagnose for the user
+                    if self.options.ability_pack_scope == AbilityPackScope.option_disabled:
+                        raise ValueError("Levels are unlocked with ability packs, but ability packs are disabled!")
+                    elif (self.options.ability_pack_scope == AbilityPackScope.option_per_level and
+                          not self.options.per_level_contents):
+                        raise ValueError("Levels are unlocked with ability packs, but no items are placed per level to be packed!")
+                    elif (self.options.ability_pack_scope == AbilityPackScope.option_per_level and
+                          not self.options.per_level_contents):
+                        raise ValueError("Levels are unlocked with ability packs, but no items are placed per mission to be packed!")
+                    elif (not self.options.ability_pack_sizes):
+                        raise ValueError("Levels are unlocked with ability packs, but there are 0 packs to be created!")
+                    elif (not max(self.options.ability_pack_sizes)):
+                        raise ValueError("Levels are unlocked with ability packs, but each pack contains no items!")
+                    raise ValueError("Levels are unlocked with ability packs, but ability packs are misconfigured")
 
 
 
@@ -414,28 +455,29 @@ class NeonWhiteWorld(World):
             levels.extend(neon_white_levels_sidequests)
         return levels
 
-    def zones(self):
-        if self.options.local_ability_zones == LocalAbilities.option_per_level:
-            return self.used_levels()
-        elif self.options.local_ability_zones == LocalAbilities.option_per_vanilla_mission or self.options.unlock_method == MissionUnlockMethod.option_levels:
-            return default_mission_select_order(self.options.sidequests)
-        elif self.options.local_ability_zones == LocalAbilities.option_per_mission:
+    def zones(self, levels):
+        if levels:
+            return remap_zone_list(self.used_levels(), map_to_level=True)
+        elif self.options.local_use_assigned_missions or not self.using_custom_missions():
+            return remap_zone_list(default_mission_select_order(self.options.sidequests), map_to_level=False)
+        else:
             return [f"Mission {n + 1}" for n in range(self.options.mission_count)]
 
-    def zone_for(self, level):
-        if self.options.local_ability_zones == LocalAbilities.option_per_level:
+    def zone_for_packs_in(self, level):
+        if self.options.ability_pack_scope == AbilityPackScope.option_per_level:
             return level
-        elif self.options.local_ability_zones == LocalAbilities.option_per_mission:
-            for connection in self.get_region("Level: " + level).entrances:
-                return connection.parent_region.name
-            raise RuntimeError(f"No region was assigned to the level {level}")
-        elif self.options.local_ability_zones == LocalAbilities.option_per_vanilla_mission:
-            return default_mission_of(level)
+        elif self.options.ability_pack_scope == AbilityPackScope.option_per_mission:
+            if self.options.local_use_assigned_missions:
+                for connection in self.get_region("Level: " + level).entrances:
+                    return connection.parent_region.name
+                raise RuntimeError(f"No region was assigned to the level {level}")
+            else:
+                return default_mission_of(level)
 
-    def zone_id_for(self, level):
-        if self.options.local_ability_zones == LocalAbilities.option_per_level:
+    def zone_id_for_packs_in(self, level):
+        if self.options.ability_pack_scope == AbilityPackScope.option_per_level:
             return level_id(level)
-        elif self.options.local_ability_zones != LocalAbilities.option_disabled:
+        elif self.options.ability_pack_scope == AbilityPackScope.option_per_mission:
             mission = self.zone_for(level)
             vanilla_missions = default_mission_select_order()
             if mission in vanilla_missions:

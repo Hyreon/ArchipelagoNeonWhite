@@ -16,12 +16,7 @@ from Options import (
 )
 
 from .locations import neon_white_levels_medals
-from .abilities import abilities
-
-local_ability_groups = [
-    "Fires",
-    "Discards"
-]
+from .abilities import abilities, ability_groups
 
 class KnowledgeDifficulty(Choice):
     """
@@ -209,32 +204,30 @@ class PerMissionContents(OptionList):
     By default, discarding and firing each card is an item, obtained once per world.
     You can assign items of your choice to be distributed multiple times, once per vanilla mission.
     Be careful not to put the same ability in both per mission and per level, or the world won't generate!
-    Setting this to something like ["Elevate - Discard"] will mean you will get items like Rebirth - Elevate - Discard,
-    unlocking Elevate - Discard in all of those, and only those, levels.
+    Discards and Fires are provided as a group for convenience
     """
     display_name = "Local Abilities - Per Mission"
-    valid_keys = frozenset(local_ability_groups + abilities)
+    valid_keys = frozenset([*ability_groups.keys()] + abilities)
     default = []
 
-class LocalUseRandomMissionContents(Toggle):
+class LocalUseAssignedMissions(Toggle):
     """
     When off (by default), Local Abilities - Per Mission
-    are distributed based on vanilla missions, like Rebirth - Elevate - Discard.
+    are distributed based on vanilla missions, like Elevate - Discard for Rebirth.
     Turning this on will distribute based on your
-    randomized missions, like Mission 1 - Elevate - Discard.
+    randomized missions, like Elevate - Discard for Mission 1.
     """
-    display_name = "Local Abilities - Use Randomized Missions"
+    display_name = "Local Abilities - Use Assigned Missions"
 
 class PerLevelContents(OptionList):
     """
     By default, discarding and firing each card is an item, obtained once per world.
     You can assign items of your choice to be distributed multiple times, once per level.
     Be careful not to put the same ability in both per mission and per level, or the world won't generate!
-    Setting this to something like ["Elevate - Discard"] will mean you will get items like Cascade - Elevate - Discard,
-    unlocking Elevate - Discard in all of those, and only those, levels.
+    Discards and Fires are provided as a group for convenience
     """
     display_name = "Local Abilities - Per Level"
-    valid_keys = frozenset(local_ability_groups + abilities)
+    valid_keys = frozenset([*ability_groups.keys()] + abilities)
     default = []
 
 class AbilityPackScope(Choice):
@@ -247,7 +240,6 @@ class AbilityPackScope(Choice):
     option_disabled = 1
     option_per_mission = 2
     option_per_level = 3
-    option_both = 4
     default = option_disabled
 
 class AbilityPackSizes(OptionList):
@@ -295,7 +287,7 @@ class NeonWhiteOptions(PerGameCommonOptions):
     bad_effects: Traps
     boof_shenanigans: BoofShenanigans
     per_mission_contents: PerMissionContents
-    local_use_random_mission_contents: LocalUseRandomMissionContents
+    local_use_assigned_missions: LocalUseAssignedMissions
     per_level_contents: PerLevelContents
     ability_pack_scope: AbilityPackScope
     ability_pack_sizes: AbilityPackSizes

@@ -19,7 +19,7 @@ from .options import (
     ExecutionDifficulty,
     KnowledgeDifficulty,
     MissionUnlockMethod,
-    LocalAbilities
+    AbilityPackScope
 )
 from .regions import neon_white_missions, neon_white_missions_sq, default_mission_of
 from .items import (
@@ -27,7 +27,7 @@ from .items import (
     progressive_pack_name,
     normal_pack_name,
     numbered_pack_name,
-    single_pack_name
+    local_item_name
 )
 
 if TYPE_CHECKING:
@@ -141,15 +141,19 @@ class LevelRequirementSet:
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         rule = False_()
 
-        for solution in self.requirements[level][medal_idx]:
+        used_solutions = self.requirements[level][medal_idx]
+        if world.using_packs():
+            used_solutions = solutions_from_packs(used_solutions)
+
+        for solution in used_solutions:
             if (solution == LevelRequirements.FistOnly):
                 return True_()
 
             abilities = solution.to_list()
-            if world is None or world.options.local_ability_zones == LocalAbilities.option_disabled:
+            if world is None or not world.using_packs():
                 rule |= HasAll(*abilities)
             else:
-                rule |= local_rule(world, level, abilities)
+                rule |= rule_with_local_abilities(world, level, abilities)
 
         return rule
 
@@ -158,30 +162,49 @@ class LevelRequirementSet:
         medal_idx = int(medal) if medal == Medal.Gift else 4 - int(medal)
         return self.requirements[level][medal_idx]
 
-# this logic assumes the config file is respected, and new items aren't cheated in. that would explode the options
-def local_rule(world, level, abilities):
 
-    zone = world.zone_for(level)
-    zone_id = world.zone_id_for(level)
+def add_to_minimal_set(item_set, item):
+    if any((item & existing_item) == existing_item for existing_item in item_set):
+        return False  # don't need this answer, it's >= what's here
 
-    local_ability_names = set(world.options.local_ability_contents.value).intersection(abilities)
-    local_abilities = [single_pack_name(zone, ability) for ability in local_ability_names]
+    new_item_set = {existing_item for existing_item in item_set if not (item & existing_item) == item}  # scrap the old answers that are >= this
+    item_set.clear()
+    item_set.update(new_item_set)
 
-    pack_ability_names = set(world.options.ability_pack_contents.value).intersection(abilities)
-    remaining_pack_abilities = pack_ability_names
+    item_set.add(item)
+    return True
 
-    global_abilities = set(abilities) - local_ability_names - pack_ability_names
+def solutions_from_packs(world, level, solutions):  # simplifies the rules as much as possible, for large multiworlds
 
-    if not remaining_pack_abilities:
-        return (HasAll(*local_abilities) & HasAll(*global_abilities))
+    extended_solutions = set()
+    for solution in solutions:
+        extended_solution = solution.copy()
+        progressive_contents = LevelRequirements.FistOnly
+        for pack in world.packs_for(level):
+            if progressive:
+                progressive_packs_attached += pack
+            if solution.union(pack):
+                if progressive:
+                    extended_solution = extended_solution.add(progressive_contents)
+                else:
+                    extended_solution = extended_solution.add(pack)
+
+        add_to_minimal_set(extended_solutions, extended_solution)
+
+    return extended_solutions
+
+
+def pack_items_from(world, level, abilities, per_level, zone):
+
+    zone_id = world.zone_id_for(level, per_level)
 
     if world.options.ability_pack_progressive.value:
         for i,ability_pack in enumerate(world.ability_packs[zone_id], start=1):
-            remaining_pack_abilities -= set(ability_pack)
-            if not remaining_pack_abilities:
-                return (Has(progressive_pack_name(zone), i) & HasAll(*local_abilities) & HasAll(*global_abilities))
+            abilities -= set(ability_pack)
+            if not abilities:
+                return [progressive_pack_name(zone)] * i
     elif len(world.ability_packs[zone_id]) == 1:
-        return (Has(normal_pack_name(zone)) & HasAll(*local_abilities) & HasAll(*global_abilities))
+        return normal_pack_name(zone)
     else:
         relevant_packs = []
         for i,ability_pack in enumerate(world.ability_packs[zone_id], start=1):
@@ -189,10 +212,42 @@ def local_rule(world, level, abilities):
                 remaining_pack_abilities -= set(ability_pack)
                 relevant_packs.append(numbered_pack_name(zone, i))
                 if not remaining_pack_abilities:
-                    return (HasAll(*relevant_packs) & HasAll(*local_abilities) & HasAll(*global_abilities))
-        # failsafe rule: expect the pack items as single items, even if those items don't exist
-        remaining_pack_abilities_as_single_items = [single_pack_name(zone, ability) for ability in remaining_pack_abilities]
-        return (HasAll(*relevant_packs) & HasAll(*local_abilities) & HasAll(*global_abilities) & HasAll(*remaining_pack_abilities_as_single_items))
+                    return relevant_packs
+
+    return None  # no solution
+
+def local_items_from(world, level, abilities, per_level) -> list | None:
+
+    if not abilities:
+        return []  # blank set, don't need anything
+
+    zone = world.zone_for(level, per_level)
+
+    if (world.options.ability_pack_scope == AbilityPackScope.option_disabled or
+            not per_level and world.options.ability_pack_scope == AbilityPackScope.option_per_level or
+            per_level and world.options.ability_pack_scope == AbilityPackScope.option_per_mission):
+        return [local_item_name(zone, ability) for ability in abilities]
+    else:
+        return pack_items_from(world, level, abilities, per_level, zone)
+
+def rule_with_local_abilities(world, level, abilities):
+
+    per_level_abilities = set(world.options.per_level_contents.value).intersection(abilities)
+    per_mission_abilities = set(world.options.per_mission_contents.value).intersection(abilities)
+
+    global_items = set(abilities) - per_level_abilities - per_mission_abilities
+    result = (set(global_items), None, 0)  # tuple representing the answer
+
+    per_level_requirement = local_items_from(world, level, per_level_abilities, per_level = True)
+    per_mission_requirement = local_items_from(world, level, per_mission_abilities, per_level = False)
+
+    if per_level_requirement is None or per_mission_requirement is None:
+        return None  # no solution, those items were trimmed out.
+
+    full_list = global_items + per_level_requirement + per_mission_requirement
+    duplicate_name, duplicate_count = count_highest(full_list)  # highest
+
+    return full_list, duplicate_name, duplicate_count
 
 def vanilla_items() -> [str]:
     from importlib.resources import files
@@ -346,7 +401,7 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
                     neonrank_count = get_mission_rank_required(world, i + 1)
                     world.set_rule(entrance, Has("Neon Rank", neonrank_count))
                 case MissionUnlockMethod.option_ability_packs:
-                    if options.local_ability_zones == LocalAbilities.option_per_mission:
+                    if world.ability_pack_scope_includes_missions(assigned=True):
                         world.set_rule(entrance, HasAny(*possible_packs_for(mission_list[i])))
                     else:
                         pass # if using vanilla missions or levels, no unlock rule required
@@ -369,9 +424,9 @@ def set_rules(multiworld: MultiWorld, world: "NeonWhiteWorld", options: NeonWhit
             if world.use_levels:
                 world.set_rule(level_entrance, Has(level_name))
             elif options.unlock_method == MissionUnlockMethod.option_ability_packs:
-                if options.local_ability_zones == LocalAbilities.option_per_level:
+                if world.ability_pack_scope_includes_levels():
                     world.set_rule(level_entrance, HasAny(*possible_packs_for(level)))
-                elif options.local_ability_zones == LocalAbilities.option_per_vanilla_mission:
+                elif world.ability_pack_scope_includes_missions(assigned=False):
                     world.set_rule(level_entrance, HasAny(*possible_packs_for(default_mission_of(level))))
                 else:
                     pass # if using loaded missions, no unlock rule required
