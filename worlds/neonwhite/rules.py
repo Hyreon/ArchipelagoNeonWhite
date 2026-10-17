@@ -314,6 +314,20 @@ def import_json_to_data(know_diff: KnowledgeDifficulty, exec_diff: ExecutionDiff
         new_requirements.requirements[entry] = [LevelReqRule(frozenset(x)) for x in solutions]
     return new_requirements
 
+def vanilla_items() -> [str]:
+    from importlib.resources import files
+    file = files(data).joinpath("nw_cr.json").open()
+    json_data = json.loads(file.read())
+    items_in_levels = []
+    for entry in json_data:
+        for solution in json_data[entry]:
+            if solution["k"] == 1 and solution["e"] == 1:  # 1 is vanilla
+                items_in_levels.append(LevelRequirements(solution["r"]).to_list())
+                break  # gift and medal completion have the same checks
+    return items_in_levels
+
+abilities_in_levels = vanilla_items()
+
 # Actual functions related to rules start here
 def level_rando(world: "NeonWhiteWorld") -> list[str]:
     if world.use_levels:
