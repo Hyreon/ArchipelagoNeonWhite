@@ -81,7 +81,6 @@ class MissionUnlockMethod(Choice):
     option_ranks = 1
     option_missions = 2
     option_levels = 3
-    option_ability_packs = 4
     default = option_ranks
 
 class StartingLevelCount(Range):
@@ -230,40 +229,6 @@ class PerLevelContents(OptionList):
     valid_keys = frozenset([*ability_groups.keys()] + abilities)
     default = []
 
-class AbilityPackScope(Choice):
-    """
-    If local ability distribution is creating too many items,
-    you can always reduce the scope by putting them into packs.
-    A pack will grant multiple abilities for its zone when obtained.
-    """
-    display_name = "Ability Pack Scope"
-    option_disabled = 1
-    option_per_mission = 2
-    option_per_level = 3
-    default = option_disabled
-
-class AbilityPackSizes(OptionList):
-    """
-    The size of each ability pack relative to each other,
-    and the amount of packs.
-    The default of [3, 5, 4] makes pack 2 the biggest,
-    with 5/12 items. Pack 1 has 3/12 and pack 3 has 4/12.
-    It is designed for progressive packs to give a satisfying arc.
-    If there are fewer than 12 relevant items, or more than
-    12 relevant items, the game will adjust accordingly.
-    """
-    display_name = "Ability Packs - Sizes"
-    default = [3, 5, 4]
-
-class AbilityPackIsProgressive(DefaultOnToggle):
-    """
-    If enabled, ability packs unlock abilities in a fixed
-    order regardless of which ones you pick up.
-    If disabled, ability packs can be obtained out of
-    order depending on which ones you pick up.
-    """
-    display_name = "Ability Packs - Progressive"
-
 
 @dataclass
 class NeonWhiteOptions(PerGameCommonOptions):
@@ -289,6 +254,3 @@ class NeonWhiteOptions(PerGameCommonOptions):
     per_mission_contents: PerMissionContents
     local_use_assigned_missions: LocalUseAssignedMissions
     per_level_contents: PerLevelContents
-    ability_pack_scope: AbilityPackScope
-    ability_pack_sizes: AbilityPackSizes
-    ability_pack_progressive: AbilityPackIsProgressive

@@ -13,9 +13,7 @@ class NWItem(Item):
     card_id = 500
     level_id = 600
     misc_id = 800
-    ability_progressive_id = 20000  # 121 levels + 15 vanilla missions + the 60 custom missions = 196
-    ability_group_id       = 20200  # up to 10 copies by number (5 medals + gift + 4 extra for future proofing); 0 is for blank, when there's only one pack per zone
-    ability_local_id       = 22400  # each of the 14 items per zone (levels without the item are included for simplicity, and for future proofing) # this is intended if a pack has 1 item, not used for now
+    ability_local_id       = 22400  # space reserved for packs at 20000 (may never come)
 
     card_classification = ItemClassification.progression | ItemClassification.useful
     usefiller_classification = ItemClassification.useful | ItemClassification.deprioritized | ItemClassification.skip_balancing
@@ -39,7 +37,6 @@ def possible_zones():
     return zones
 
 # Ben just HAD to be extra and name a mission and level the same thing >.<
-# it was so ELEGANT before this bug was uncovered
 def zone_name(zone, map_to_level=None):
     if zone != "The Third Temple" or map_to_level is None:
         return zone
@@ -51,26 +48,9 @@ def zone_name(zone, map_to_level=None):
 def remap_zone_list(zones, map_to_level=None):
     return [zone_name(zone, map_to_level) for zone in zones]
 
-def progressive_pack_name(zone: str, map_to_level):
-    zone = zone_name(zone, map_to_level)
-    return f"{zone} - Progressive Abilities"
-
-def normal_pack_name(zone: str, map_to_level):
-    zone = zone_name(zone, map_to_level)
-    return f"{zone} - Ability Pack"
-
-def numbered_pack_name(zone: str, number: int, map_to_level):
-    zone = zone_name(zone, map_to_level)
-    return f"{zone} - Ability Pack {number}"
-
 def local_item_name(zone: str, contents: str, map_to_level):
     zone = zone_name(zone, map_to_level)
     return f"{zone} - {contents}"
-
-def possible_packs_for(zone: str, map_to_level):
-    packs = [progressive_pack_name(zone, map_to_level), normal_pack_name(zone, map_to_level)]
-    packs.extend(numbered_pack_name(zone, x, map_to_level) for x in range(1, 11))
-    return packs
 
 nw_items: dict[str, NWItemData] = {
     item: NWItemData("Card", NWItem.card_id + i + 1, NWItem.card_classification)
@@ -98,16 +78,6 @@ nw_items: dict[str, NWItemData] = {
     f"{level}": NWItemData("Level", NWItem.level_id + i, ItemClassification.progression)
         for i, level in enumerate(neon_white_level_name_internal.keys())
 } | {
-    progressive_pack_name(zone, None): NWItemData("Ability Pack", NWItem.ability_progressive_id + i, ItemClassification.progression)
-        for i, zone in enumerate(possible_zones())
-} | {
-    normal_pack_name(zone, None): NWItemData("Ability Pack", NWItem.ability_group_id + i, ItemClassification.progression)
-        for i, zone in enumerate(possible_zones())
-} | {
-    numbered_pack_name(zone, n, None): NWItemData("Ability Pack", NWItem.ability_group_id + i + 200*n, ItemClassification.progression)
-        for i, zone in enumerate(possible_zones())
-        for n in range(1, 11)
-} | {
     local_item_name(zone, ability, None): NWItemData("Local Ability", NWItem.ability_local_id + i, ItemClassification.progression)
         for i, zone in enumerate(possible_zones())
         for ability in abilities
@@ -118,8 +88,7 @@ item_categories = [
     "Card",
     "Filler",
     "Level",
-    "Local Ability",
-    "Ability Pack"
+    "Local Ability"
 ]
 
 nw_item_groups = { cat: set(get_items_from_category(cat)) for cat in item_categories }
